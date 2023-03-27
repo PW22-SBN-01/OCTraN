@@ -1,0 +1,114 @@
+{
+    "method": "random",
+    "metric": {
+      "goal": "minimize",
+      "name": "IOU"
+    },
+    "parameters": {
+      "amp": {
+        "values": [
+          false
+        ]
+      },
+      "alpha": {
+        "values": [
+          [
+            1,
+            0
+          ]
+        ]
+      },
+      "depth": {
+        "values": [
+          8, 12, 16, 20
+        ]
+      },
+      "epochs": {
+        "values": [
+          10
+        ]
+      },
+      "max_freq": {
+        "values": [
+          100000, 400000, 800000
+        ]
+      },
+      "img_scale": {
+        "values": [
+          0.5
+        ]
+      },
+      "batch_size": {
+        "values": [
+          1, 2, 8
+        ]
+      },
+      "cross_heads": {
+        "values": [
+          4, 8, 16
+        ]
+      },
+      "save_points": {
+        "values": [
+          true
+        ]
+      },
+      "val_percent": {
+        "values": [
+          0.1
+        ]
+      },
+      "latent_heads": {
+        "values": [
+          4, 8, 16
+        ]
+      },
+      "weight_decay": {
+        "values": [
+          0
+        ]
+      },
+      "learning_rate": {
+        "values": [
+          0.002,
+          0.0003,
+          0.00004
+        ]
+      },
+      "cross_dim_head": {
+        "values": [
+          16, 32, 64
+        ]
+      },
+      "ground_removal": {
+        "values": [
+          false
+        ]
+      },
+      "latent_dim_head": {
+        "values": [
+          16, 32, 64
+        ]
+      },
+      "save_checkpoint": {
+        "values": [
+          false
+        ]
+      },
+      "freeze_regnet_epoch": {
+        "values": [
+          5
+        ]
+      },
+      "self_per_cross_attn": {
+        "values": [
+          0, 8, 16
+        ]
+      },
+      "apply_loss_mask_prob": {
+        "values": [
+          0.0
+        ]
+      }
+    }
+  }

@@ -1,0 +1,3 @@
+[submodule "kitti_iterator"]
+	path = kitti_iterator
+	url = https://github.com/PW22-SBN-01/kitti_iterator

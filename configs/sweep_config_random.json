@@ -1,0 +1,130 @@
+{
+  "method": "random",
+  "metric": {
+    "goal": "minimize",
+    "name": "train_loss"
+  },
+  "parameters": {
+    "max_freq": {
+      "values": [
+        50000.0,
+        100000.0,
+        500000.0
+      ]
+    },
+    "weight_decay": {
+      "values": [
+        0.0,
+        1e-4
+      ]
+    },
+    "self_per_cross_attn": {
+      "values": [
+        8,
+        16,
+        32
+      ]
+    },
+    "depth": {
+      "values": [
+        16
+      ]
+    },
+    "cross_heads": {
+      "values": [
+        32,
+        64,
+        128
+      ]
+    },
+    "latent_heads": {
+      "values": [
+        4,
+        8,
+        16
+      ]
+    },
+    "cross_dim_head": {
+      "values": [
+        32,
+        64,
+        128
+      ]
+    },
+    "learning_rate": {
+      "values": [
+        0.001,
+        0.0001,
+        0.00001
+      ]
+    },
+    "batch_size": {
+      "values": [
+        2,
+        4,
+        8
+      ]
+    },
+    "latent_dim_head": {
+      "values": [
+        16,
+        64,
+        256
+      ]
+    },
+    "freeze_regnet_epoch": {
+      "values": [
+        0,
+        5
+      ]
+    },
+    "apply_loss_mask_prob": {
+      "values": [
+        0
+      ]
+    },
+    "ground_removal": {
+      "values": [
+        false
+      ]
+    },
+    "epochs": {
+      "values": [
+        20
+      ]
+    },
+    "val_percent": {
+      "values": [
+        0.1
+      ]
+    },
+    "save_checkpoint": {
+      "values": [
+        false
+      ]
+    },
+    "img_scale": {
+      "values": [
+        0.5
+      ]
+    },
+    "amp": {
+      "values": [
+        false
+      ]
+    },
+    "save_points": {
+      "values": [
+        true
+      ]
+    },
+    "alpha": {
+      "values": [
+        [
+          1,
+          0
+        ]
+      ]
+    }
+  }
+}

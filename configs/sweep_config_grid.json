@@ -1,0 +1,79 @@
+{
+    "method": "grid",
+    "metric": {
+      "goal": "minimize",
+      "name": "train_loss"
+    },
+    "parameters": {
+      "epochs": {
+        "values": [
+          20
+        ]
+      },
+      "batch_size": {
+        "values": [
+          1
+        ]
+      },
+      "learning_rate": {
+        "values": [
+          0.00001,
+          0.0001,
+          0.001
+        ]
+      },
+      "val_percent": {
+        "values": [
+          0.1
+        ]
+      },
+      "save_checkpoint": {
+        "values": [
+          true
+        ]
+      },
+      "img_scale": {
+        "values": [
+          0.5
+        ]
+      },
+      "amp": {
+        "values": [
+          false
+        ]
+      },
+      "save_points": {
+        "values": [
+          true
+        ]
+      },
+      "alpha": {
+        "values": [
+          [
+            1,
+            0
+          ]
+        ]
+      },
+      "freeze_regnet_epoch": {
+        "values": [
+          0,
+          5,
+          100000000
+        ]
+      },
+      "apply_loss_mask_prob": {
+        "values": [
+          0,
+          0.5,
+          1
+        ]
+      },
+      "ground_removal": {
+        "values": [
+          true,
+          false
+        ]
+      }
+    }
+  }
