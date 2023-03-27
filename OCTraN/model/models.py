@@ -9,11 +9,11 @@ from torchvision import transforms
 from torchvision.models import resnet50, ResNet50_Weights, ResNet34_Weights
 
 
-from regnet import regnetx_002, regnetx_004, regnetx_006, regnetx_040, regnetx_080
+from OCTraN.model.regnet import regnetx_002, regnetx_004, regnetx_006, regnetx_040, regnetx_080
 from positional_encodings.torch_encodings import PositionalEncoding1D, PositionalEncoding2D, PositionalEncoding3D, Summer
 from positional_encodings.torch_encodings import PositionalEncodingPermute1D, PositionalEncodingPermute2D
 
-from perciever import Perceiver
+from OCTraN.model.perciever import Perceiver
 
 project_root = os.getcwd().split('OccupancyNetwork/notebooks')[0]
 

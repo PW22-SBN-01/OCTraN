@@ -39,8 +39,8 @@ from matplotlib import pyplot as plt
 from positional_encodings.torch_encodings import PositionalEncoding1D, PositionalEncoding2D, PositionalEncoding3D, Summer
 from positional_encodings.torch_encodings import PositionalEncodingPermute1D, PositionalEncodingPermute2D
 
-from bifpn import BiFPN
-from regnet import regnetx_002, regnetx_004, regnetx_006, regnetx_040, regnetx_080
+# from bifpn import BiFPN
+# from regnet import regnetx_002, regnetx_004, regnetx_006, regnetx_040, regnetx_080
 
 key_list = ['image_00', 'image_01', 'image_02', 'image_03', 'occupancy_grid', 'image_00_raw', 'image_01_raw', 'image_02_raw', 'image_03_raw', 'roi_00', 'roi_01', 'roi_02', 'roi_03', 'K_00', 'K_01', 'K_02', 'K_03', 'R_00', 'R_01', 'R_02', 'R_03', 'T_00', 'T_01', 'T_02', 'T_03', 'calib_cam_to_cam', 'calib_imu_to_velo', 'calib_velo_to_cam', 'velodyine_points', 'occupancy_mask_2d', 'velodyine_points_camera']
 k2i = {} # key_to_index

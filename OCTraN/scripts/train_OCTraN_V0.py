@@ -1,5 +1,6 @@
 # CUBLAS_WORKSPACE_CONFIG=:4096:8 CUDA_VISIBLE_DEVICES=1 python OccupancyNetwork/notebooks/train_OccupancyNetwork3D_Perceiver_ResNet.py
 # CUBLAS_WORKSPACE_CONFIG=:4096:8 CUDA_VISIBLE_DEVICES=1 nohup python OccupancyNetwork/notebooks/train_OccupancyNetwork3D_Perceiver_ResNet.py &
+# CUBLAS_WORKSPACE_CONFIG=:4096:8 CUDA_VISIBLE_DEVICES=1 python3 -m OCTraN.scripts.train_OCTraN_V0
 
 import os
 import sys
@@ -205,7 +206,7 @@ kitti_iter_0001 = kitti_raw_iterator.KittiRaw(
 # Network definition
 
 # from models import OccupancyGrid_FrozenBiFPN_Multihead_stereo_batched_highres as OccupancyNetwork3D
-from models import OccupancyNetwork3D_Perceiver as OccupancyNetwork3D
+from OCTraN.model.models import OccupancyNetwork3D_Perceiver as OccupancyNetwork3D
 
 ###############################################
 
