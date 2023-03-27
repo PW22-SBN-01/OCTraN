@@ -226,7 +226,7 @@ input_axis = 2
 num_freq_bands = round(((float(fourier_channels) / input_axis) - 1.0)/2.0)
 
 
-class OccupancyNetwork3D_Perceiver(nn.Module):
+class OCTraN3D_Perceiver(nn.Module):
     def __init__(self, 
                 debug=False,
                  
@@ -253,7 +253,7 @@ class OccupancyNetwork3D_Perceiver(nn.Module):
                 upscale_size = upscale_size,
                 latents_init = False
                 ):
-        super(OccupancyNetwork3D_Perceiver, self,).__init__()
+        super(OCTraN3D_Perceiver, self,).__init__()
         
         assert len(grid_shape) == 3, "grid_shape must be 3D"
         
@@ -384,7 +384,7 @@ class OccupancyNetwork3D_Perceiver(nn.Module):
         y = self.sigmoid(a)
         return y
 
-class OccupancyNetwork3D_Perceiver_Chunked(nn.Module):
+class OCTraN3D_Perceiver_Chunked(nn.Module):
     def __init__(self, 
                 debug=False,
                  
@@ -411,7 +411,7 @@ class OccupancyNetwork3D_Perceiver_Chunked(nn.Module):
                 upscale_size = upscale_size,
                 latents_init = False
                 ):
-        super(OccupancyNetwork3D_Perceiver_Chunked, self,).__init__()
+        super(OCTraN3D_Perceiver_Chunked, self,).__init__()
         
         assert len(grid_shape) == 3, "grid_shape must be 3D"
         
@@ -601,7 +601,7 @@ class OccupancyNetwork3D_Perceiver_Chunked(nn.Module):
         y = self.sigmoid(a)
         return y
 
-class OccupancyNetwork3D_Perceiver_Chunked_2(nn.Module):
+class OCTraN3D_Perceiver_Chunked_2(nn.Module):
     def __init__(self, 
                 debug=False,
                  
@@ -628,7 +628,7 @@ class OccupancyNetwork3D_Perceiver_Chunked_2(nn.Module):
                 upscale_size = upscale_size,
                 latents_init = False
                 ):
-        super(OccupancyNetwork3D_Perceiver_Chunked_2, self,).__init__()
+        super(OCTraN3D_Perceiver_Chunked_2, self,).__init__()
         
         assert len(grid_shape) == 3, "grid_shape must be 3D"
         

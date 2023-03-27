@@ -45,7 +45,7 @@ import cv2
 from matplotlib import pyplot as plt
 
 
-from OCTraN.model.OccupancyGrid_Helper import *
+from OCTraN.model.OCTraN3D_helper import *
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # device = torch.device('cpu')
@@ -198,8 +198,8 @@ kitti_iter_0001 = kitti_raw_iterator.KittiRaw(
 
 # Network definition
 
-# from models import OccupancyGrid_FrozenBiFPN_Multihead_stereo_batched_highres as OccupancyNetwork3D
-from models import OccupancyNetwork3D_Perceiver as OccupancyNetwork3D
+# from models import OccupancyGrid_FrozenBiFPN_Multihead_stereo_batched_highres as OCTraN3D
+from models import OCTraN3D_Perceiver as OCTraN3D
 
 ###############################################
 
@@ -233,7 +233,7 @@ def train_net():
 
     max_freq = wandb.config.max_freq
 
-    net = OccupancyNetwork3D(
+    net = OCTraN3D(
         debug=False,
         input_channels = 512,          # number of channels for each token of the input
         input_axis = input_axis,              # number of axis for input data (2 for images, 3 for video)

@@ -1,7 +1,7 @@
 import os
 import sys
 # CUBLAS_WORKSPACE_CONFIG=:4096:8 python OccupancyNetwork/notebooks/train.py --name sweep_perc_resnet_jan_15 --sweep_json configs/sweep_config_random_10_IOU.json
-# CUBLAS_WORKSPACE_CONFIG=:4096:8 CUDA_VISIBLE_DEVICES=0 nohup python OccupancyNetwork/notebooks/train_OccupancyNetwork3D_Perceiver_ResNet_Chunked.py &
+# CUBLAS_WORKSPACE_CONFIG=:4096:8 CUDA_VISIBLE_DEVICES=0 nohup python OccupancyNetwork/notebooks/train_OCTraN3D_Perceiver_ResNet_Chunked.py &
 project_root = os.getcwd().split('OccupancyNetwork/notebooks')[0]
 
 sys.path.append(os.path.join(project_root, 'OccupancyNetwork', 'model'))
@@ -55,7 +55,7 @@ from positional_encodings.torch_encodings import PositionalEncodingPermute1D, Po
 from bifpn import BiFPN
 from regnet import regnetx_002, regnetx_004, regnetx_006, regnetx_040, regnetx_080
 
-from OCTraN.model.OccupancyGrid_Helper import *
+from OCTraN.model.OCTraN3D_helper import *
 
 from RegressionModel import RegressionModel
 from MultiLayeredMultiheadAttention import MultiLayeredMultiheadAttention
@@ -211,8 +211,8 @@ kitti_iter_0001 = kitti_raw_iterator.KittiRaw(
 
 # Network definition
 
-# from models import OccupancyGrid_FrozenBiFPN_Multihead_stereo_batched_highres as OccupancyNetwork3D
-from models import OccupancyNetwork3D_Perceiver_Chunked as OccupancyNetwork3D
+# from models import OccupancyGrid_FrozenBiFPN_Multihead_stereo_batched_highres as OCTraN3D
+from models import OCTraN3D_Perceiver_Chunked as OCTraN3D
 
 ###############################################
 
@@ -253,7 +253,7 @@ def train_net():
 
     max_freq = wandb.config.max_freq
 
-    net = OccupancyNetwork3D(
+    net = OCTraN3D(
         debug=False,
         input_channels = 2560,          # number of channels for each token of the input
         input_axis = input_axis,              # number of axis for input data (2 for images, 3 for video)
