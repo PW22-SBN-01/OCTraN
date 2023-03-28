@@ -8,8 +8,5 @@ Modern approaches for vision-centric environment perception for autonomous navig
  - Raw dataset link - https://drive.google.com/drive/folders/1ouZk8stDobJtpDvYKBPKg0bWNR6bIX-U?usp=sharing
  - Depth Dataset link - https://drive.google.com/drive/folders/1pzDVOu_Kpo_1sSdOQvF3n7zZ44NBLdzN?usp=share_link
 
-# Credits
-
-This repository was based on code from several other open source research projects:
-
-Perceiver - https://github.com/lucidrains/perceiver-pytorch/
+# Acknowledgements
+Our work builds on and uses code from <a src="https://github.com/lucidrains/perceiver-pytorch/">Perceiver</a> and <a src="https://github.com/lucidrains/vit-pytorch/">ViT</a>. We'd like to thank the authors for making these libraries available.
