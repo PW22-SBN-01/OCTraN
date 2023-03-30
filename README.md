@@ -44,8 +44,8 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 CUDA_VISIBLE_DEVICES=0 python3 -m OCTraN.scripts
 # Acknowledgements
 
 Our work builds on and uses code from the following. We'd like to thank the authors for making these libraries available.
- - <a src="https://github.com/lucidrains/perceiver-pytorch/">Perceiver</a>
- - <a src="https://github.com/lucidrains/vit-pytorch/">ViT</a>
+ - <a href="https://github.com/lucidrains/perceiver-pytorch/">Perceiver</a>
+ - <a href="https://github.com/lucidrains/vit-pytorch/">ViT</a>
  - <a href="https://github.com/compphoto/BoostingMonocularDepth">BoostingMonocularDepth</a>
  - <a href="https://github.com/compphoto/BoostYourOwnDepth">BoostYourOwnDepth</a>
  - <a href="https://github.com/luigifreda/pyslam">pyslam</a>
