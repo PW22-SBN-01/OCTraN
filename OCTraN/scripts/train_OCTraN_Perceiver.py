@@ -260,22 +260,26 @@ def train_net():
     )
 
     if args.load:
-        net.load_state_dict(torch.load(load, map_location=device))
-        print(f'Model loaded from {load}')
+        net.load_state_dict(torch.load(args.load, map_location=device))
+        print(f'Model loaded from {args.load}')
 
     net = net.to(device=device)
 
     print('net all params')
+    count_params = sum([param.nelement() for param in net.parameters()])
     mem_params = sum([param.nelement()*param.element_size() for param in net.parameters()])
     mem_bufs = sum([buf.nelement()*buf.element_size() for buf in net.buffers()])
     mem = mem_params + mem_bufs # in bytes
     print('mem', mem / 1024.0 / 1024.0, ' MB')
+    print('count_params', count_params)
 
     print('net trainable params')
+    count_params = sum([param.nelement() for param in net.parameters()])
     mem_params = sum([param.nelement()*param.element_size() for param in net.parameters() if param.requires_grad])
     mem_bufs = sum([buf.nelement()*buf.element_size() for buf in net.buffers() if buf.requires_grad])
     mem = mem_params + mem_bufs # in bytes
     print('mem', mem / 1024.0 / 1024.0, ' MB')
+    print('count_params', count_params)
 
     print('resnet_fpn all params')
     mem_params = sum([param.nelement()*param.element_size() for param in net.resnet_fpn.parameters()])
