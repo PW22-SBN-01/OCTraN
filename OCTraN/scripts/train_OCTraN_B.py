@@ -1,12 +1,8 @@
 import os
 import sys
-# CUBLAS_WORKSPACE_CONFIG=:4096:8 python OccupancyNetwork/notebooks/train.py --name sweep_perc_resnet_jan_15 --sweep_json configs/sweep_config_random_10_IOU.json
 project_root = os.getcwd().split('OccupancyNetwork/notebooks')[0]
 
 sys.path.append(os.path.join(project_root, 'OccupancyNetwork', 'model'))
-# os.environ["CUDA_VISIBLE_DEVICES"]="0"
-# os.environ["CUDA_VISIBLE_DEVICES"]="1"
-
 import json
 import traceback
 import time
@@ -14,6 +10,7 @@ import time
 import numpy as np
 import random
 import torch
+
 # REPRODUCIBILITY
 random.seed(0)
 np.random.seed(0)
@@ -31,8 +28,6 @@ from torch.utils.data import random_split
 import wandb
 
 from tqdm import tqdm
-# from tqdm.notebook import tqdm
-# from tqdm import tqdm_notebook as tqdm
 import logging
 
 from pathlib import Path
@@ -65,13 +60,9 @@ wandb.login()
 
 # Training Constants
 
-# 164, 164, 44
-# 128, 128, 8
 grid_scale = (1.5, 2.5, 2.0)
 grid_size = (128/grid_scale[0], 128/grid_scale[1], 8/grid_scale[2])
-# grid_size = (740/grid_scale[0], 532/grid_scale[1], 68/grid_scale[2])
 
-# grid_sigma = 1.0
 grid_sigma = None
 grid_gaus_n = 1
 
@@ -80,14 +71,10 @@ ground_removal=True
 val_percent = 0.1
 batch_size = 2
 
-# kitti_raw_path = os.path.join(os.path.expanduser("~"), "kitti", "raw")
 kitti_raw_path = "/home/shared/Kitti"
-# kitti_raw_path = os.path.join(os.path.expanduser("~"), "Datasets", "kitti", "raw")
 
 enable_test_image = False
 enable_test_smoothness_loss = False
-# image_scale_x = 256.0 / 291.0
-# image_scale_y = 1024.0 / 1200.0
 image_scale_x = 256.0 / 291.0 /2.0
 image_scale_y = 1024.0 / 1200.0 /2.0
 
@@ -108,7 +95,6 @@ num_freq_bands = round(((float(fourier_channels) / input_axis) - 1.0)/2.0)
 # Transformations and Dataset Definition
 def total_transform(img, unsqueeze=False):
     tfms = transforms.Compose([
-#         transforms.Resize((256, 256)), 
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
     ])
@@ -123,9 +109,7 @@ def total_transform(img, unsqueeze=False):
 
 def total_transform_grey(img, unsqueeze=False):
     tfms = transforms.Compose([
-#         transforms.Resize((256, 256)), 
         transforms.ToTensor(),
-#         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
     ])
     img = cv2.resize(img, (round(image_scale_y*1200), round(image_scale_x*291)))
     img = Image.fromarray(img)
@@ -157,49 +141,14 @@ kitti_iter_0001 = kitti_raw_iterator.KittiRaw(
     ground_removal=ground_removal
 )
 
-# dataset = torch.utils.data.ConcatDataset(
-#     get_kitti_raw(
-#         kitti_raw_base_path=kitti_raw_path,
-#         transform={
-#             'image_00': total_transform,
-#             'image_01': total_transform,
-#             'image_02': total_transform,
-#             'image_03': total_transform,
-#             'occupancy_mask_2d': total_transform_grey,
-#             'occupancy_grid': transforms.Compose([
-#                 transforms.ToTensor()
-#             ])
-#         },
-#         grid_size = grid_size,
-#         scale = grid_scale,
-#         sigma = grid_sigma,
-#         gaus_n= grid_gaus_n,
-#         ground_removal=ground_removal
-#     )[:30]
-# )
 
-# total_size = len(dataset)
-# total_use = int(round(total_size*0.02))
-# total_discard = total_size - total_use
-
-# print("Total number of frames", total_size)
-# print("Using only", total_use, "frames")
-
-# dataset, _ = random_split(dataset, [total_use, total_discard], generator=torch.Generator().manual_seed(0))
-
-# # Split into train / validation partitions
-# n_val = int(len(dataset) * val_percent)
-# n_train = len(dataset) - n_val
-# train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0))
-
-# print('len(train_set)', len(train_set))
 
 ###############################################
 
 # Network definition
 
 # from models import OccupancyGrid_FrozenBiFPN_Multihead_stereo_batched_highres as OCTraN3D
-from models import OCTraN3D_Perceiver as OCTraN3D
+from OCTraN.model.models import OCTraN3D_Perceiver as OCTraN3D
 
 ###############################################
 
@@ -416,12 +365,6 @@ def train_net():
                         res = net([image_02, image_03])
                         masks_pred = res.permute((1,0,2,3,4)).squeeze(0)
 
-    #                     print('masks_pred.shape', masks_pred.shape)
-    #                     print('true_masks.shape', true_masks.shape)
-
-#                         loss = criterion(masks_pred, true_masks, use_mask=epoch>apply_loss_mask_epoch)
-#                         loss = criterion(masks_pred, true_masks, use_mask=epoch%2==0)
-#                         loss = criterion(masks_pred, true_masks, use_mask=global_step%2==0)
                         loss = criterion(masks_pred, true_masks, use_mask=apply_loss_mask_prob>random.random())
 
                     optimizer.zero_grad(set_to_none=True)
@@ -521,11 +464,11 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(description='Training script for occupancy network')
-    parser.add_argument('--name', required=True,
+    parser.add_argument('--name', default='sweep_perc_jan_14',
                         help='Name of the experiment')
     parser.add_argument('--load', default=False,
                         help='Path to checkpoint to load from; default: random weights')
-    parser.add_argument('--sweep_json', default='configs/Feb_21/sweep_config_OccupancyGrid3D_Perceiver_resnet_Mar_19.json',
+    parser.add_argument('--sweep_json', default='configs/March_20/sweep_config_OCTraN_B.json',
                         help='Path to checkpoint to sweep json')
 
     args = parser.parse_args()

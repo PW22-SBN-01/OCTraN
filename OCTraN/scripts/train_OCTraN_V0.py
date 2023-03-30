@@ -1,15 +1,8 @@
-# CUBLAS_WORKSPACE_CONFIG=:4096:8 CUDA_VISIBLE_DEVICES=1 python OccupancyNetwork/notebooks/train_OCTraN3D_Perceiver_ResNet.py
-# CUBLAS_WORKSPACE_CONFIG=:4096:8 CUDA_VISIBLE_DEVICES=1 nohup python OccupancyNetwork/notebooks/train_OCTraN3D_Perceiver_ResNet.py &
-# CUBLAS_WORKSPACE_CONFIG=:4096:8 CUDA_VISIBLE_DEVICES=1 python3 -m OCTraN.scripts.train_OCTraN_V0
-
 import os
 import sys
 project_root = os.getcwd().split('OccupancyNetwork/notebooks')[0]
 
 sys.path.append(os.path.join(project_root, 'OccupancyNetwork', 'model'))
-# os.environ["CUDA_VISIBLE_DEVICES"]="0"
-# os.environ["CUDA_VISIBLE_DEVICES"]="1"
-
 import json
 import traceback
 import time
@@ -19,9 +12,9 @@ import random
 import torch
 
 # REPRODUCIBILITY
-# random.seed(0)
-# np.random.seed(0)
-# torch.manual_seed(0)
+random.seed(0)
+np.random.seed(0)
+torch.manual_seed(0)
 torch.use_deterministic_algorithms(True)
 
 torch.multiprocessing.set_start_method('spawn')
@@ -35,8 +28,6 @@ from torch.utils.data import random_split
 import wandb
 
 from tqdm import tqdm
-# from tqdm.notebook import tqdm
-# from tqdm import tqdm_notebook as tqdm
 import logging
 
 from pathlib import Path
@@ -164,42 +155,7 @@ kitti_iter_0001 = kitti_raw_iterator.KittiRaw(
     ground_removal=ground_removal
 )
 
-# dataset = torch.utils.data.ConcatDataset(
-#     get_kitti_raw(
-#         kitti_raw_base_path=kitti_raw_path,
-#         transform={
-#             'image_00': total_transform,
-#             'image_01': total_transform,
-#             'image_02': total_transform,
-#             'image_03': total_transform,
-#             'occupancy_mask_2d': total_transform_grey,
-#             'occupancy_grid': transforms.Compose([
-#                 transforms.ToTensor()
-#             ])
-#         },
-#         grid_size = grid_size,
-#         scale = grid_scale,
-#         sigma = grid_sigma,
-#         gaus_n= grid_gaus_n,
-#         ground_removal=ground_removal
-#     )[:30]
-# )
 
-# total_size = len(dataset)
-# total_use = int(round(total_size*0.02))
-# total_discard = total_size - total_use
-
-# print("Total number of frames", total_size)
-# print("Using only", total_use, "frames")
-
-# dataset, _ = random_split(dataset, [total_use, total_discard], generator=torch.Generator().manual_seed(0))
-
-# # Split into train / validation partitions
-# n_val = int(len(dataset) * val_percent)
-# n_train = len(dataset) - n_val
-# train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0))
-
-# print('len(train_set)', len(train_set))
 
 ###############################################
 
@@ -423,12 +379,6 @@ def train_net():
                         res = net([image_02, image_03])
                         masks_pred = res.permute((1,0,2,3,4)).squeeze(0)
 
-    #                     print('masks_pred.shape', masks_pred.shape)
-    #                     print('true_masks.shape', true_masks.shape)
-
-#                         loss = criterion(masks_pred, true_masks, use_mask=epoch>apply_loss_mask_epoch)
-#                         loss = criterion(masks_pred, true_masks, use_mask=epoch%2==0)
-#                         loss = criterion(masks_pred, true_masks, use_mask=global_step%2==0)
                         loss = criterion(masks_pred, true_masks, use_mask=apply_loss_mask_prob>random.random())
 
                     optimizer.zero_grad(set_to_none=True)
@@ -532,7 +482,7 @@ if __name__ == '__main__':
                         help='Name of the experiment')
     parser.add_argument('--load', default=False,
                         help='Path to checkpoint to load from; default: random weights')
-    parser.add_argument('--sweep_json', default='configs/Feb_21/sweep_config_OccupancyGrid3D_Perceiver_resnet_Mar_19.json',
+    parser.add_argument('--sweep_json', default='configs/March_20/sweep_config_OCTraN_V0.json',
                         help='Path to checkpoint to sweep json')
 
     args = parser.parse_args()

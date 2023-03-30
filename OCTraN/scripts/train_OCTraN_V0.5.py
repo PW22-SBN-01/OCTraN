@@ -5,9 +5,6 @@ import sys
 project_root = os.getcwd().split('OccupancyNetwork/notebooks')[0]
 
 sys.path.append(os.path.join(project_root, 'OccupancyNetwork', 'model'))
-# os.environ["CUDA_VISIBLE_DEVICES"]="0"
-# os.environ["CUDA_VISIBLE_DEVICES"]="1"
-
 import json
 import traceback
 import time
@@ -32,8 +29,6 @@ from torch.utils.data import random_split
 import wandb
 
 from tqdm import tqdm
-# from tqdm.notebook import tqdm
-# from tqdm import tqdm_notebook as tqdm
 import logging
 
 from pathlib import Path
@@ -170,42 +165,7 @@ kitti_iter_0001 = kitti_raw_iterator.KittiRaw(
     ground_removal=ground_removal
 )
 
-# dataset = torch.utils.data.ConcatDataset(
-#     get_kitti_raw(
-#         kitti_raw_base_path=kitti_raw_path,
-#         transform={
-#             'image_00': total_transform,
-#             'image_01': total_transform,
-#             'image_02': total_transform,
-#             'image_03': total_transform,
-#             'occupancy_mask_2d': total_transform_grey,
-#             'occupancy_grid': transforms.Compose([
-#                 transforms.ToTensor()
-#             ])
-#         },
-#         grid_size = grid_size,
-#         scale = grid_scale,
-#         sigma = grid_sigma,
-#         gaus_n= grid_gaus_n,
-#         ground_removal=ground_removal
-#     )[:30]
-# )
 
-# total_size = len(dataset)
-# total_use = int(round(total_size*0.02))
-# total_discard = total_size - total_use
-
-# print("Total number of frames", total_size)
-# print("Using only", total_use, "frames")
-
-# dataset, _ = random_split(dataset, [total_use, total_discard], generator=torch.Generator().manual_seed(0))
-
-# # Split into train / validation partitions
-# n_val = int(len(dataset) * val_percent)
-# n_train = len(dataset) - n_val
-# train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0))
-
-# print('len(train_set)', len(train_set))
 
 ###############################################
 
@@ -436,12 +396,6 @@ def train_net():
                         res = net([image_02, image_03])
                         masks_pred = res.permute((1,0,2,3,4)).squeeze(0)
 
-    #                     print('masks_pred.shape', masks_pred.shape)
-    #                     print('true_masks.shape', true_masks.shape)
-
-#                         loss = criterion(masks_pred, true_masks, use_mask=epoch>apply_loss_mask_epoch)
-#                         loss = criterion(masks_pred, true_masks, use_mask=epoch%2==0)
-#                         loss = criterion(masks_pred, true_masks, use_mask=global_step%2==0)
                         loss = criterion(masks_pred, true_masks, use_mask=apply_loss_mask_prob>random.random())
 
                     optimizer.zero_grad(set_to_none=True)
@@ -532,19 +486,7 @@ def main(args):
     with open(args.sweep_json, 'r') as sweep_json_file:
         sweep_config = json.load(sweep_json_file)
     
-    # for i in range(100):
-    # while True:
     
-    # if os.path.isfile(SWEEP_ID_PATH):
-    #     with open(SWEEP_ID_PATH) as sweep_id_file:
-    #         sweep_id = sweep_id_file.read()
-    #         print('sweep_id (from file)', sweep_id)
-    # else:
-    #     sweep_id = wandb.sweep(sweep_config, project=nb_name, entity="pw22-sbn-01")
-    #     with open(SWEEP_ID_PATH, 'w') as sweep_id_file:
-    #         sweep_id_file.write(sweep_id)
-    #     print('sweep_id (generated)', sweep_id)
-
     sweep_id = wandb.sweep(sweep_config, project=nb_name, entity="pw22-sbn-01")
     print('sweep_id (generated)', sweep_id)
 

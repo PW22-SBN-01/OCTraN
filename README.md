@@ -12,6 +12,12 @@ Get all submodules
 git submodule update --init --recursive
 ```
 
+Setup environment
+```
+pip install requirements.txt
+```
+
+
 # Bengaluru Depth Dataset Dataset
 
  - Raw dataset link - (Removed for double blind review)
@@ -19,11 +25,6 @@ git submodule update --init --recursive
  - Mini Depth Dataset link - https://bit.ly/OCTraN-Dataset
 
 Download the Mini Depth Dataset and place it at `~/Datasets/Depth_Dataset_Bengaluru/1658384924059`
-
-Setup environment
-```
-pip install requirements.txt
-```
 
 Run visualizer to view 3D point cloud
 ```shell
@@ -38,7 +39,11 @@ The visualizer wo;; plot out the RGB, Boosted Disparity and non-boosted Disparit
 
 Train our model on the Raw KITTI dataset
 ```
-CUBLAS_WORKSPACE_CONFIG=:4096:8 CUDA_VISIBLE_DEVICES=0 python3 -m OCTraN.scripts.train_OCTraN_V0
+export CUBLAS_WORKSPACE_CONFIG=:4096:8 # Determinism
+
+CUDA_VISIBLE_DEVICES=0 python3 -m OCTraN.scripts.train_OCTraN_B --sweep_json configs/March_20/sweep_config_OCTraN_B.json
+CUDA_VISIBLE_DEVICES=0 python3 -m OCTraN.scripts.train_OCTraN_V0 --sweep_json configs/March_20/sweep_config_OCTraN_V0.json
+CUDA_VISIBLE_DEVICES=0 python3 -m OCTraN.scripts.train_OCTraN_V1 --sweep_json configs/March_20/sweep_config_OCTraN_V1.json
 ```
 
 # Acknowledgements
