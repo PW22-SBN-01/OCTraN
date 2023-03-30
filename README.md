@@ -30,7 +30,7 @@ Run visualizer to view 3D point cloud
 cd dataset_pipeline/
 python3 -m dataset_helper.dataset_iterators
 ```
-The visualizer wo;; plot out the RGB, Disparity, Boosted Disparity frame from the dataset and the corresponding 3D point cloud, as shown below:
+The visualizer wo;; plot out the RGB, Boosted Disparity and non-boosted Disparity frame (in that order) from the dataset and the corresponding 3D point cloud, as shown below:
 
 <img src="media/plot_dataset_3D.png">
 
