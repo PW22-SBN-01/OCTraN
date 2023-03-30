@@ -1,3 +1,6 @@
 [submodule "kitti_iterator"]
 	path = kitti_iterator
 	url = https://github.com/PW22-SBN-01/kitti_iterator
+[submodule "dataset_pipeline"]
+	path = dataset_pipeline
+	url = https://github.com/PW22-SBN-01/dataset_pipeline
