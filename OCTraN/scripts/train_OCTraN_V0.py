@@ -1,8 +1,9 @@
 import os
 import sys
-project_root = os.getcwd().split('OccupancyNetwork/notebooks')[0]
-
-sys.path.append(os.path.join(project_root, 'OccupancyNetwork', 'model'))
+project_root = os.getcwd()
+print(project_root)
+exit()
+sys.path.append(os.path.join(project_root, 'dataset_pipeline'))
 import json
 import traceback
 import time
@@ -33,8 +34,7 @@ import logging
 from pathlib import Path
 
 from kitti_iterator import kitti_raw_iterator
-
-
+from dataset_helper.dataset_iterators import BengaluruOccupancyDatasetIterator
 
 from PIL import Image
 
