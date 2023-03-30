@@ -1,7 +1,7 @@
 import os
 import sys
 # CUBLAS_WORKSPACE_CONFIG=:4096:8 python OccupancyNetwork/notebooks/train.py --name sweep_perc_resnet_jan_15 --sweep_json configs/sweep_config_random_10_IOU.json
-project_root = os.getcwd().split('OccupancyNetwork/notebooks')[0]
+project_root = os.getcwd()
 
 sys.path.append(os.path.join(project_root, 'OccupancyNetwork', 'model'))
 import json

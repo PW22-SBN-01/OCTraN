@@ -1,6 +1,6 @@
 import os
 import sys
-project_root = os.getcwd().split('OccupancyNetwork/notebooks')[0]
+project_root = os.getcwd()
 
 sys.path.append(os.path.join(project_root, 'OccupancyNetwork', 'model'))
 import json

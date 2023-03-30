@@ -15,7 +15,7 @@ from positional_encodings.torch_encodings import PositionalEncodingPermute1D, Po
 
 from OCTraN.model.perciever import Perceiver
 
-project_root = os.getcwd().split('OccupancyNetwork/notebooks')[0]
+project_root = os.getcwd()
 
 class OccupancyGrid_FrozenBiFPN_Multihead_stereo_batched_highres(nn.Module):
 #     def __init__(self, debug=False, regnet_const=regnetx_080, regnet_path='weights/RegNetX-8.0G-1045c007.pth'):
