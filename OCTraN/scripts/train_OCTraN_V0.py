@@ -1,8 +1,7 @@
 import os
 import sys
 project_root = os.getcwd()
-print(project_root)
-exit()
+
 sys.path.append(os.path.join(project_root, 'dataset_pipeline'))
 import json
 import traceback
