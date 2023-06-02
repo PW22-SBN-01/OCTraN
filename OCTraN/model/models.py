@@ -383,6 +383,148 @@ class OCTraN3D_Perceiver(nn.Module):
         
         y = self.sigmoid(a)
         return y
+    
+class OCTraN3D_Perceiver_Pure(nn.Module):
+    def __init__(self, 
+                debug=False,
+                 
+                input_channels = 6,          # number of channels for each token of the input
+                input_axis = input_axis,              # number of axis for input data (2 for images, 3 for video)
+                num_freq_bands = num_freq_bands,          # number of freq bands, with original value (2 * K + 1)
+                max_freq = 10.,              # maximum frequency, hyperparameter depending on how fine the data is
+                depth = 1,                   # depth of net. The shape of the final attention mechanism will be:
+                                                #   depth * (cross attention -> self_per_cross_attn * self attention)
+                num_latents = num_latents,           # number of latents, or induced set points, or centroids. different papers giving it different names
+                latent_dim = latent_dim,            # latent dimension
+                cross_heads = 1,             # number of heads for cross attention. paper said 1
+                latent_heads = 8,            # number of heads for latent self attention, 8
+                cross_dim_head = 64,         # number of dimensions per cross attention head
+                latent_dim_head = 64,        # number of dimensions per latent self attention head
+                attn_dropout = 0.,
+                ff_dropout = 0.,
+                weight_tie_layers = False,   # whether to weight tie layers (optional, as indicated in the diagram)
+                fourier_encode_data = True,  # whether to auto-fourier encode the data, using the input_axis given. defaults to True, but can be turned off if you are fourier encoding the data yourself
+                self_per_cross_attn = 2,      # number of self attention blocks per cross attention
+                
+                grid_shape = (2**3, 2**7, 2**7),
+                
+                upscale_size = upscale_size,
+                latents_init = False
+                ):
+        super(OCTraN3D_Perceiver_Pure, self,).__init__()
+        
+        assert len(grid_shape) == 3, "grid_shape must be 3D"
+        
+        if type(latents_init) == type(False):
+            latents_init = torch.randn(num_latents, latent_dim)
+        
+        num_classes = grid_shape[0]*grid_shape[1]*grid_shape[2]
+        self.grid_shape = grid_shape
+        self.debug = debug
+        
+        
+        self.flatten_1 = nn.Flatten(start_dim=1)
+        
+        self.perciever = Perceiver(
+            input_channels = input_channels,
+            input_axis = input_axis,
+            num_freq_bands = num_freq_bands,
+            max_freq = max_freq,
+            depth = depth,
+            num_latents = num_latents,
+            latent_dim = latent_dim,
+            cross_heads = cross_heads,
+            latent_heads = latent_heads,
+            cross_dim_head = cross_dim_head,
+            latent_dim_head = latent_dim_head,
+            num_classes = num_classes,
+            attn_dropout = attn_dropout,
+            ff_dropout = ff_dropout,
+            weight_tie_layers = weight_tie_layers,
+            fourier_encode_data = fourier_encode_data,
+            self_per_cross_attn = self_per_cross_attn,
+            latents_init = latents_init,
+            final_classifier_head = False
+        )
+        
+        self.norm1 = nn.InstanceNorm3d(1)
+        self.norm2 = nn.InstanceNorm3d(1)
+        self.norm3 = nn.InstanceNorm3d(1)
+        
+        self.up1 = nn.ConvTranspose3d(1, 1, kernel_size=(upscale_size, upscale_size, upscale_size), stride=1)
+        self.up2 = nn.ConvTranspose3d(1, 1, kernel_size=(upscale_size, upscale_size, upscale_size), stride=1)
+        self.up3 = nn.ConvTranspose3d(1, 1, kernel_size=(upscale_size, upscale_size, upscale_size), stride=1)
+        self.up4 = nn.ConvTranspose3d(1, 1, kernel_size=(upscale_size, upscale_size, upscale_size), stride=1)
+        self.up5 = nn.ConvTranspose3d(1, 1, kernel_size=(upscale_size, upscale_size, upscale_size), stride=1)
+        self.up6 = nn.ConvTranspose3d(1, 1, kernel_size=(upscale_size, upscale_size, upscale_size), stride=1)
+        self.up7 = nn.ConvTranspose3d(1, 1, kernel_size=(upscale_size, upscale_size, upscale_size), stride=1)
+        self.up8 = nn.ConvTranspose3d(1, 1, kernel_size=(upscale_size, upscale_size, upscale_size), stride=1)
+        self.up9 = nn.ConvTranspose3d(1, 1, kernel_size=(upscale_size, upscale_size, upscale_size), stride=1)
+
+        self.sigmoid = torch.nn.Sigmoid()
+
+    def set_resnet_fnp_training(self, status=True):
+        return
+            
+    def forward(self, x):
+        image_02, image_03 = x
+        batch_size = image_02.shape[0]
+        
+        if len(image_02.shape) == 3:
+            image_02 = image_02.unsqueeze(0)
+            image_03 = image_03.unsqueeze(0)
+
+        
+        if self.debug: print('image_03.shape', image_03.shape)
+            
+        if self.debug: print('-'*10)
+            
+        # feats3 = self.resnet_fpn(image_02)
+        # feats4 = self.resnet_fpn(image_03)
+        
+        # feats3_0 = feats3['0']
+        # feats4_0 = feats4['0']
+
+        perc_input = torch.cat([image_02, image_03], dim=1).permute(0, 2,3,1)
+                
+        if self.debug: print('perc_input.shape', perc_input.shape)
+
+        perciever_res = self.perciever(perc_input)
+        small_grid = perciever_res.view(perciever_res.shape[0], self.grid_shape[0], self.grid_shape[1], self.grid_shape[2])
+
+        if self.debug: print('perciever_res.shape', perciever_res.shape)
+        if self.debug: print('small_grid.shape', small_grid.shape)
+
+        if self.debug: print("-"*10)
+        # a = attn_out.unsqueeze(0).permute(1,0,2,3,4)
+#         a = small_grid.unsqueeze(1)
+        a = small_grid.unsqueeze(1)
+
+        if self.debug: print(small_grid.shape)
+        
+        a = self.norm1(a)
+        if self.debug: print(a.shape)
+        a = self.up1(a)
+        if self.debug: print(a.shape)
+        a= self.up2(a)
+        if self.debug: print(a.shape)
+        a = self.up3(a)
+        if self.debug: print(a.shape)
+        a = self.up4(a)
+        if self.debug: print(a.shape)
+        a = self.up5(a)
+        if self.debug: print(a.shape)
+        a = self.up6(a)
+        if self.debug: print(a.shape)
+        a = self.up7(a)
+        if self.debug: print(a.shape)
+        a = self.up8(a)
+        if self.debug: print(a.shape)
+        a = self.up9(a)
+        if self.debug: print(a.shape)
+        
+        y = self.sigmoid(a)
+        return y
 
 class OCTraN3D_Perceiver_Chunked(nn.Module):
     def __init__(self, 

@@ -71,7 +71,8 @@ ground_removal=True
 val_percent = 0.1
 batch_size = 2
 
-kitti_raw_path = "/home/shared/Kitti"
+# kitti_raw_path = "/home/shared/Kitti"
+kitti_raw_path = os.path.join(os.path.expanduser("~"), "Datasets", "kitti", "raw")
 
 enable_test_image = False
 enable_test_smoothness_loss = False
@@ -148,7 +149,7 @@ kitti_iter_0001 = kitti_raw_iterator.KittiRaw(
 # Network definition
 
 # from models import OccupancyGrid_FrozenBiFPN_Multihead_stereo_batched_highres as OCTraN3D
-from OCTraN.model.models import OCTraN3D_Perceiver as OCTraN3D
+from OCTraN.model.models import OCTraN3D_Perceiver_Pure as OCTraN3D
 
 ###############################################
 
@@ -184,7 +185,7 @@ def train_net():
 
     net = OCTraN3D(
         debug=False,
-        input_channels = 512,          # number of channels for each token of the input
+        input_channels = 6,          # number of channels for each token of the input
         input_axis = input_axis,              # number of axis for input data (2 for images, 3 for video)
         num_freq_bands = num_freq_bands,          # number of freq bands, with original value (2 * K + 1)
         max_freq = max_freq,              # maximum frequency, hyperparameter depending on how fine the data is
@@ -202,7 +203,7 @@ def train_net():
         fourier_encode_data = True,  # whether to auto-fourier encode the data, using the input_axis given. defaults to True, but can be turned off if you are fourier encoding the data yourself
         self_per_cross_attn = self_per_cross_attn,      # number of self attention blocks per cross attention
         
-        grid_shape = (2**3, 2**7, 2**7),
+        # grid_shape = (2**3, 2**7, 2**7*3),
         
         upscale_size = upscale_size,
         latents_init = False
@@ -230,17 +231,17 @@ def train_net():
     print('mem', mem / 1024.0 / 1024.0, ' MB')
     print('count_params', count_params)
 
-    print('resnet_fpn all params')
-    mem_params = sum([param.nelement()*param.element_size() for param in net.resnet_fpn.parameters()])
-    mem_bufs = sum([buf.nelement()*buf.element_size() for buf in net.resnet_fpn.buffers()])
-    mem = mem_params + mem_bufs # in bytes
-    print('mem', mem / 1024.0 / 1024.0, ' MB')
+    # print('resnet_fpn all params')
+    # mem_params = sum([param.nelement()*param.element_size() for param in net.resnet_fpn.parameters()])
+    # mem_bufs = sum([buf.nelement()*buf.element_size() for buf in net.resnet_fpn.buffers()])
+    # mem = mem_params + mem_bufs # in bytes
+    # print('mem', mem / 1024.0 / 1024.0, ' MB')
 
-    print('resnet_fpn trainable params')
-    mem_params = sum([param.nelement()*param.element_size() for param in net.resnet_fpn.parameters() if param.requires_grad])
-    mem_bufs = sum([buf.nelement()*buf.element_size() for buf in net.resnet_fpn.buffers() if buf.requires_grad])
-    mem = mem_params + mem_bufs # in bytes
-    print('mem', mem / 1024.0 / 1024.0, ' MB')
+    # print('resnet_fpn trainable params')
+    # mem_params = sum([param.nelement()*param.element_size() for param in net.resnet_fpn.parameters() if param.requires_grad])
+    # mem_bufs = sum([buf.nelement()*buf.element_size() for buf in net.resnet_fpn.buffers() if buf.requires_grad])
+    # mem = mem_params + mem_bufs # in bytes
+    # print('mem', mem / 1024.0 / 1024.0, ' MB')
 
     # 1. Create dataset
     dataset = torch.utils.data.ConcatDataset(
@@ -338,107 +339,103 @@ def train_net():
         epoch_loss = 0
         with tqdm(total=n_train, desc=f'Epoch {epoch}/{epochs}', unit='img') as pbar:
             for batch_index in range(batch_size, len(train_set), batch_size):
-                try:
-                    batch = [[], [], [], [], []]
-                    for sub_index in range(batch_index-batch_size, batch_index, 1):
-                        new_batch = train_set[sub_index]
-                        for sub_cat in range(len(batch)):
-                            batch[sub_cat] += [new_batch[sub_cat].unsqueeze(0)]
-
+                batch = [[], [], [], [], []]
+                for sub_index in range(batch_index-batch_size, batch_index, 1):
+                    new_batch = train_set[sub_index]
                     for sub_cat in range(len(batch)):
-                        batch[sub_cat] = torch.cat(batch[sub_cat], dim=0)
+                        batch[sub_cat] += [new_batch[sub_cat].unsqueeze(0)]
 
-                    image_00, image_01, image_02, image_03, true_masks = batch[:5]
+                for sub_cat in range(len(batch)):
+                    batch[sub_cat] = torch.cat(batch[sub_cat], dim=0)
 
-                    image_00 = image_00.to(device=device, dtype=torch.float32)
-                    image_01 = image_01.to(device=device, dtype=torch.float32)
-                    image_02 = image_02.to(device=device, dtype=torch.float32)
-                    image_03 = image_03.to(device=device, dtype=torch.float32)
-                    true_masks = true_masks.to(device=device, dtype=torch.float32)
+                image_00, image_01, image_02, image_03, true_masks = batch[:5]
 
-                    if epoch > freeze_regnet_epoch:
-    #                     print("Freezing regnet weights")
-                        net.set_resnet_fnp_training(False)
-                        pass
+                image_00 = image_00.to(device=device, dtype=torch.float32)
+                image_01 = image_01.to(device=device, dtype=torch.float32)
+                image_02 = image_02.to(device=device, dtype=torch.float32)
+                image_03 = image_03.to(device=device, dtype=torch.float32)
+                true_masks = true_masks.to(device=device, dtype=torch.float32)
 
-                    with torch.cuda.amp.autocast(enabled=amp):
-                        res = net([image_02, image_03])
-                        masks_pred = res.permute((1,0,2,3,4)).squeeze(0)
+                if epoch > freeze_regnet_epoch:
+#                     print("Freezing regnet weights")
+                    net.set_resnet_fnp_training(False)
+                    pass
 
-                        loss = criterion(masks_pred, true_masks, use_mask=apply_loss_mask_prob>random.random())
+                with torch.cuda.amp.autocast(enabled=amp):
+                    res = net([image_02, image_03])
+                    masks_pred = res.permute((1,0,2,3,4)).squeeze(0)
 
-                    optimizer.zero_grad(set_to_none=True)
-                    grad_scaler.scale(loss).backward()
-                    grad_scaler.step(optimizer)
-                    grad_scaler.update()
+                    loss = criterion(masks_pred, true_masks, use_mask=apply_loss_mask_prob>random.random())
 
-                    pbar.update(image_00.shape[0])
-                    global_step += 1
-                    epoch_loss += loss.item()
-                    experiment.log({
-                        'train_loss': loss.item(),
-                        'step': global_step,
-                        'epoch': epoch
-                    })
-                    pbar.set_postfix(**{'loss (batch)': loss.item()})
+                optimizer.zero_grad(set_to_none=True)
+                grad_scaler.scale(loss).backward()
+                grad_scaler.step(optimizer)
+                grad_scaler.update()
 
-                    # Evaluation round
-                    division_step = (n_train // (1 * batch_size))
-                    if division_step >= 0:
-                        if global_step % division_step == 0:
-                            histograms = {}
-                            for tag, value in net.named_parameters():
-                                if type(value)!=type(None) and type(value.grad)!=type(None):
-                                    tag = tag.replace('/', '.')
-                                    histograms['Weights/' + tag] = wandb.Histogram(value.data.cpu())
-                                    histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
+                pbar.update(image_00.shape[0])
+                global_step += 1
+                epoch_loss += loss.item()
+                experiment.log({
+                    'train_loss': loss.item(),
+                    'step': global_step,
+                    'epoch': epoch
+                })
+                pbar.set_postfix(**{'loss (batch)': loss.item()})
 
-                            occupancy_grid_pred = masks_pred[0].cpu().detach().numpy()
+                # Evaluation round
+                division_step = (n_train // (1 * batch_size))
+                if division_step >= 0:
+                    if global_step % division_step == 0:
+                        histograms = {}
+                        for tag, value in net.named_parameters():
+                            if type(value)!=type(None) and type(value.grad)!=type(None):
+                                tag = tag.replace('/', '.')
+                                histograms['Weights/' + tag] = wandb.Histogram(value.data.cpu())
+                                histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
 
-                            pc = kitti_iter_0001.transform_occupancy_grid_to_points(occupancy_grid_pred, threshold=0.54, skip=1)
-                            rgb = np.ones_like(pc) * 255
-                            rgb[:,0] = 0
-                            rgb[:,1] = 0
-                            pc_rgb = np.hstack([pc, rgb])
+                        occupancy_grid_pred = masks_pred[0].cpu().detach().numpy()
 
-                            occupancy_grid_gt = true_masks[0].cpu().detach().numpy()
-                            pc_gt = kitti_iter_0001.transform_occupancy_grid_to_points(occupancy_grid_gt, skip=1)
-                            rgb = np.ones_like(pc_gt) * 255
-                            rgb[:,1] = 0
-                            rgb[:,2] = 0
-                            pc_gt_rgb = np.hstack([pc_gt, rgb])
+                        pc = kitti_iter_0001.transform_occupancy_grid_to_points(occupancy_grid_pred, threshold=0.54, skip=1)
+                        rgb = np.ones_like(pc) * 255
+                        rgb[:,0] = 0
+                        rgb[:,1] = 0
+                        pc_rgb = np.hstack([pc, rgb])
 
-                            IOU, dice_score, IOU_lidar = evaluate(net, val_set, device, batch_size=batch_size, amp=amp)
-                            print('IOU, dice_score, IOU_lidar: {}, {}, {}'.format(IOU, dice_score, IOU_lidar))
+                        occupancy_grid_gt = true_masks[0].cpu().detach().numpy()
+                        pc_gt = kitti_iter_0001.transform_occupancy_grid_to_points(occupancy_grid_gt, skip=1)
+                        rgb = np.ones_like(pc_gt) * 255
+                        rgb[:,1] = 0
+                        rgb[:,2] = 0
+                        pc_gt_rgb = np.hstack([pc_gt, rgb])
 
-                            scheduler.step(IOU)
+                        IOU, dice_score, IOU_lidar = evaluate(net, val_set, device, batch_size=batch_size, amp=amp)
+                        print('IOU, dice_score, IOU_lidar: {}, {}, {}'.format(IOU, dice_score, IOU_lidar))
 
-                            experiment.log({
-                                'learning rate': optimizer.param_groups[0]['lr'],
-                                'IOU': IOU,
-                                'IOU_lidar': IOU_lidar,
-                                'dice_score': dice_score,
-                                "point cloud pred": wandb.Object3D(
-                                    {
-                                        "type": "lidar/beta",
-                                        "points": pc_rgb,
-                                    }
-                                ),
-                                "point cloud gt": wandb.Object3D(
-                                    {
-                                        "type": "lidar/beta",
-                                        "points": pc_gt_rgb,
-                                    }
-                                ),
-                                'images': wandb.Image(image_00[0].cpu()),
-                                'step': global_step,
-                                'epoch': epoch,
-                                **histograms
-                            })
-    #                 global_step += 1
-                except Exception as ex:
-                    print(ex)
-                    traceback.print_exc()
+                        scheduler.step(IOU)
+
+                        experiment.log({
+                            'learning rate': optimizer.param_groups[0]['lr'],
+                            'IOU': IOU,
+                            'IOU_lidar': IOU_lidar,
+                            'dice_score': dice_score,
+                            "point cloud pred": wandb.Object3D(
+                                {
+                                    "type": "lidar/beta",
+                                    "points": pc_rgb,
+                                }
+                            ),
+                            "point cloud gt": wandb.Object3D(
+                                {
+                                    "type": "lidar/beta",
+                                    "points": pc_gt_rgb,
+                                }
+                            ),
+                            'images': wandb.Image(image_00[0].cpu()),
+                            'step': global_step,
+                            'epoch': epoch,
+                            **histograms
+                        })
+#                 global_step += 1
             try:
                 test_image(net, kitti_iter_0001, train_set, plot=False)
             except Exception as ex:
@@ -454,10 +451,10 @@ def main(args):
     with open(args.sweep_json, 'r') as sweep_json_file:
         sweep_config = json.load(sweep_json_file)
     
-    for i in range(100):
-        sweep_id = wandb.sweep(sweep_config, project=nb_name, entity="pw22-sbn-01")
-        print('sweep_id', sweep_id)
-        wandb.agent(sweep_id, function=train_net)
+    # for i in range(100):
+    sweep_id = wandb.sweep(sweep_config, project=nb_name, entity="pw22-sbn-01")
+    print('sweep_id', sweep_id)
+    wandb.agent(sweep_id, function=train_net)
     
 
 if __name__ == '__main__':
