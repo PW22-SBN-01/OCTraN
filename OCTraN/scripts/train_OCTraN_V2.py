@@ -28,7 +28,7 @@ from torch.utils.data import random_split
 import wandb
 
 from tqdm import tqdm
-import logging
+import logging, colorlog
 
 from pathlib import Path
 
@@ -328,18 +328,29 @@ def train_net():
     
     alpha = torch.tensor(alpha).to(device=device, dtype=torch.float32)
     
-    def criterion(masks_pred, true_masks, use_mask=False):
+    def criterion(backbone_output, masks_pred, true_masks, use_mask=False):
+        '''
+            Custom loss function which combines binary cross entropy and contrastive loss.
+                Args:
+                    backbone_output: Embeddings obtained from backbone layer.
+                    masks_pred: Selective predictictions from network.
+                    true_masks: Selective ground truth occupancy.
+                    use_mask (bool): Boolean indicating if masks were used.
+        '''
+        # Compute BCELoss
+        bce_loss = 0
         if use_mask:
             consider_mask = true_masks > 0.5
             masks_pred_masked = masks_pred[consider_mask]
             true_masks_masked = true_masks[consider_mask]
-            return (
-                BCELoss_criterion(masks_pred_masked, true_masks_masked)
-              )
+            bce_loss = BCELoss_criterion(masks_pred_masked, true_masks_masked)
         else:
-            return (
-                BCELoss_criterion(masks_pred, true_masks)
-              )
+            bce_loss = BCELoss_criterion(masks_pred, true_masks)
+        
+        # Compute Contrastive Loss
+
+        return bce_loss
+
 
     # 5. Begin training
     for epoch in range(1, epochs+1):
@@ -378,7 +389,10 @@ def train_net():
                         res = net([image_02, image_03])
                         masks_pred = res.permute((1,0,2,3,4)).squeeze(0)
 
-                        loss = criterion(masks_pred, true_masks, use_mask=apply_loss_mask_prob>random.random())
+                        embeddings = net.perc_input
+
+                        loss = criterion(embeddings, masks_pred, true_masks, use_mask=apply_loss_mask_prob>random.random())
+                        print(f"BCELoss: {loss}")
 
                     optimizer.zero_grad(set_to_none=True)
                     grad_scaler.scale(loss).backward()
@@ -492,6 +506,6 @@ if __name__ == '__main__':
     dir_checkpoint = os.path.join('checkpoints', nb_name)
     os.makedirs(dir_checkpoint, exist_ok=True)
     dir_checkpoint = Path(dir_checkpoint)
-    logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+    # logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
     main(args)
