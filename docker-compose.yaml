@@ -1,0 +1,10 @@
+version: "3.9"
+services:
+  dev:
+    # Will build ./docker/Dockerfile-GPU
+    # This Dockerfile is for GPU based development
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile-GPU
+    volumes:
+      - ./:/OCTraN

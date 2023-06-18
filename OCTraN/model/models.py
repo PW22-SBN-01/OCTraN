@@ -318,6 +318,9 @@ class OCTraN3D_Perceiver(nn.Module):
 
         self.sigmoid = torch.nn.Sigmoid()
 
+        # Save input to perceiver
+        self.perc_input = None
+
     def set_resnet_fnp_training(self, status=True):
 #         return
         # Stops training of regnets if false
@@ -343,11 +346,11 @@ class OCTraN3D_Perceiver(nn.Module):
         feats3_0 = feats3['0']
         feats4_0 = feats4['0']
 
-        perc_input = torch.cat([feats3_0, feats4_0], dim=1).permute(0, 2,3,1)
+        self.perc_input = torch.cat([feats3_0, feats4_0], dim=1).permute(0, 2,3,1)
                 
-        if self.debug: print('perc_input.shape', perc_input.shape)
+        if self.debug: print('perc_input.shape', self.perc_input.shape)
             
-        perciever_res = self.perciever(perc_input)
+        perciever_res = self.perciever(self.perc_input)
         small_grid = perciever_res.view(perciever_res.shape[0], self.grid_shape[0], self.grid_shape[1], self.grid_shape[2])
 
         if self.debug: print('perciever_res.shape', perciever_res.shape)
