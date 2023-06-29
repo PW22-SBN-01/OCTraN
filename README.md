@@ -14,7 +14,7 @@ git submodule update --init --recursive
 
 Setup environment
 ```
-pip install requirements.txt
+pip install -r requirements.txt
 ```
 
 
@@ -45,7 +45,7 @@ CUDA_VISIBLE_DEVICES=0 python3 -m OCTraN.scripts.train_OCTraN_B --sweep_json con
 CUDA_VISIBLE_DEVICES=0 python3 -m OCTraN.scripts.train_OCTraN_V0 --sweep_json configs/March_20/sweep_config_OCTraN_V0.json
 CUDA_VISIBLE_DEVICES=0 python3 -m OCTraN.scripts.train_OCTraN_V1 --sweep_json configs/March_20/sweep_config_OCTraN_V1.json
 
-CUBLAS_WORKSPACE_CONFIG=:4096:8CUDA_VISIBLE_DEVICES=0 python3 -m OCTraN.scripts.train_OCTraN_V0 --sweep_json configs/March_20/sweep_config_OCTraN.json --name OCTraN_V0_TEST
+CUBLAS_WORKSPACE_CONFIG=:4096:8 CUDA_VISIBLE_DEVICES=0 python3 -m OCTraN.scripts.train_OCTraN_V0 --sweep_json configs/March_20/sweep_config_OCTraN.json --name OCTraN_V0_TEST
 ```
 
 # Acknowledgements

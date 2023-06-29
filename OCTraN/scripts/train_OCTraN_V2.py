@@ -30,6 +30,26 @@ import wandb
 from tqdm import tqdm
 import logging, colorlog
 
+log = logging.getLogger()
+log.setLevel(logging.INFO)
+formatter = colorlog.ColoredFormatter(
+	"%(log_color)s%(levelname)-8s%(reset)s %(white)s%(message)s",
+	datefmt=None,
+	reset=True,
+	log_colors={
+		'DEBUG':    'cyan',
+		'INFO':     'green',
+		'WARNING':  'yellow',
+		'ERROR':    'red',
+		'CRITICAL': 'red,bg_white',
+	},
+	secondary_log_colors={},
+	style='%'
+)
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
+log.addHandler(stream_handler)
+
 from pathlib import Path
 
 from kitti_iterator import kitti_raw_iterator
@@ -46,12 +66,12 @@ from OCTraN.model.OCTraN3D_helper import *
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # device = torch.device('cpu')
-print(f'Using device {device}')
+log.info(f'Using device {device}')
 
-print('torch.__version__', torch.__version__) # 1.13.0
-print('torch.version.cuda', torch.version.cuda) # => 11.7
-print('torch.backends.cudnn.version()', torch.backends.cudnn.version()) # => 8500
-print('torch.cuda.device_count()', torch.cuda.device_count())
+log.info('torch.__version__', torch.__version__) # 1.13.0
+log.info('torch.version.cuda', torch.version.cuda) # => 11.7
+log.info('torch.backends.cudnn.version()', torch.backends.cudnn.version()) # => 8500
+log.info('torch.cuda.device_count()', torch.cuda.device_count())
 
 ###############################################
 
@@ -78,7 +98,7 @@ val_percent = 0.1
 batch_size = 2
 
 # kitti_raw_path = os.path.join(os.path.expanduser("~"), "kitti", "raw")
-kitti_raw_path = "/OccupancyNetworks/data/Kitti"
+kitti_raw_path = "/OCTraN/data/Kitti"
 # kitti_raw_path = os.path.join(os.path.expanduser("~"), "Datasets", "kitti", "raw")
 
 enable_test_image = False
@@ -223,37 +243,38 @@ def train_net():
 
     if args.load:
         net.load_state_dict(torch.load(args.load, map_location=device))
-        print(f'Model loaded from {args.load}')
+        log.info(f'Model loaded from {args.load}')
 
     net = net.to(device=device)
 
-    print('net all params')
+    log.info('net all params')
     count_params = sum([param.nelement() for param in net.parameters()])
     mem_params = sum([param.nelement()*param.element_size() for param in net.parameters()])
     mem_bufs = sum([buf.nelement()*buf.element_size() for buf in net.buffers()])
     mem = mem_params + mem_bufs # in bytes
-    print('mem', mem / 1024.0 / 1024.0, ' MB')
-    print('count_params', count_params)
+    log.info(f'mem {mem / 1024.0 / 1024.0} MB')
+    log.info(f'count_params {count_params}')
 
-    print('net trainable params')
+    log.info('net trainable params')
     count_params = sum([param.nelement() for param in net.parameters()])
     mem_params = sum([param.nelement()*param.element_size() for param in net.parameters() if param.requires_grad])
     mem_bufs = sum([buf.nelement()*buf.element_size() for buf in net.buffers() if buf.requires_grad])
     mem = mem_params + mem_bufs # in bytes
-    print('mem', mem / 1024.0 / 1024.0, ' MB')
-    print('count_params', count_params)
+    log.info(f'mem {mem / 1024.0 / 1024.0} MB')
+    log.info(f'count_params {count_params}')
+    
 
-    print('resnet_fpn all params')
+    log.info('resnet_fpn all params')
     mem_params = sum([param.nelement()*param.element_size() for param in net.resnet_fpn.parameters()])
     mem_bufs = sum([buf.nelement()*buf.element_size() for buf in net.resnet_fpn.buffers()])
     mem = mem_params + mem_bufs # in bytes
-    print('mem', mem / 1024.0 / 1024.0, ' MB')
+    log.info(f'mem {mem / 1024.0 / 1024.0} MB')
 
-    print('resnet_fpn trainable params')
+    log.info('resnet_fpn trainable params')
     mem_params = sum([param.nelement()*param.element_size() for param in net.resnet_fpn.parameters() if param.requires_grad])
     mem_bufs = sum([buf.nelement()*buf.element_size() for buf in net.resnet_fpn.buffers() if buf.requires_grad])
     mem = mem_params + mem_bufs # in bytes
-    print('mem', mem / 1024.0 / 1024.0, ' MB')
+    log.info(f'mem {mem / 1024.0 / 1024.0} MB')
 
     # 1. Create dataset
     dataset = torch.utils.data.ConcatDataset(
@@ -293,7 +314,7 @@ def train_net():
     assert len(val_set) > 0, 'Validation set is 0'
     assert len(train_set) > 0, 'Train set is 0'
     
-    print(f'''Starting training:
+    log.info(f'''Starting training:
         epochs: {wandb.config.epochs}
         batch_size: {wandb.config.batch_size}
         learning_rate: {wandb.config.learning_rate}
@@ -355,7 +376,7 @@ def train_net():
     # 5. Begin training
     for epoch in range(1, epochs+1):
         if epoch > freeze_regnet_epoch:
-            print("Freezing regnet weights")
+            log.info("Freezing regnet weights")
 #             net.set_resnet_fnp_training(False)
 
         net.train()
@@ -381,7 +402,7 @@ def train_net():
                     true_masks = true_masks.to(device=device, dtype=torch.float32)
 
                     if epoch > freeze_regnet_epoch:
-    #                     print("Freezing regnet weights")
+    #                     logging.info("Freezing regnet weights")
                         net.set_resnet_fnp_training(False)
                         pass
 
@@ -392,7 +413,7 @@ def train_net():
                         embeddings = net.perc_input
 
                         loss = criterion(embeddings, masks_pred, true_masks, use_mask=apply_loss_mask_prob>random.random())
-                        print(f"BCELoss: {loss}")
+                        log.info(f"BCELoss: {loss}")
 
                     optimizer.zero_grad(set_to_none=True)
                     grad_scaler.scale(loss).backward()
@@ -436,7 +457,7 @@ def train_net():
                             pc_gt_rgb = np.hstack([pc_gt, rgb])
 
                             IOU, dice_score, IOU_lidar = evaluate(net, val_set, device, batch_size=batch_size, amp=amp)
-                            print('IOU, dice_score, IOU_lidar: {}, {}, {}'.format(IOU, dice_score, IOU_lidar))
+                            log.info('IOU, dice_score, IOU_lidar: {}, {}, {}'.format(IOU, dice_score, IOU_lidar))
 
                             scheduler.step(IOU)
 
@@ -464,16 +485,16 @@ def train_net():
                             })
     #                 global_step += 1
                 except Exception as ex:
-                    print(ex)
-                    traceback.print_exc()
+                    log.info(ex)
+                    traceback.logging.info()
             try:
                 test_image(net, kitti_iter_0001, train_set, plot=False)
             except Exception as ex:
-                print(ex)
+                log.info(ex)
             if save_checkpoint:
                 Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
                 torch.save(net.state_dict(), str(dir_checkpoint / 'checkpoint_epoch{}.pth'.format(epoch)))
-                print(f'Checkpoint {epoch} saved!')
+                log.info(f'Checkpoint {epoch} saved!')
 
 ##############################################
 
@@ -483,7 +504,7 @@ def main(args):
     
     for i in range(100):
         sweep_id = wandb.sweep(sweep_config, project=nb_name, entity="pw22-sbn-01")
-        print('sweep_id', sweep_id)
+        log.info('sweep_id', sweep_id)
         wandb.agent(sweep_id, function=train_net)
     
 
