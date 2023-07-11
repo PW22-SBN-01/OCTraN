@@ -44,7 +44,7 @@ num_workers_per_gpu=0
 exp_prefix="exp"
 run=1
 lr=0.01
-weight_decay=0.01
+weight_decay=0.001
 
 context_prior=True
 
@@ -74,11 +74,22 @@ def main():
     project_scale = 2
     feature = 64
     n_classes = 20
+
+    project_res = ["1_8"]
+
+    class_names = kitti_class_names
     class_weights = torch.from_numpy(
         1 / np.log(semantic_kitti_class_frequencies + 0.001)
     )
-
-    project_res = ["1_8"]
+    semantic_kitti_class_frequencies_occ = np.array(
+        [
+            semantic_kitti_class_frequencies[0],
+            semantic_kitti_class_frequencies[1:].sum(),
+        ]
+    )
+    class_weights_occ = torch.from_numpy(
+        1 / np.log(semantic_kitti_class_frequencies_occ + 0.001)
+    )
 
     # Model
     # Initialize OCTraN model
@@ -110,20 +121,6 @@ def main():
     optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
     # Load Data
-    class_names = kitti_class_names
-    class_weights = torch.from_numpy(
-        1 / np.log(semantic_kitti_class_frequencies + 0.001)
-    )
-    semantic_kitti_class_frequencies_occ = np.array(
-        [
-            semantic_kitti_class_frequencies[0],
-            semantic_kitti_class_frequencies[1:].sum(),
-        ]
-    )
-    class_weights_occ = torch.from_numpy(
-        1 / np.log(semantic_kitti_class_frequencies_occ + 0.001)
-    )
-
     data_module = KittiDataModule(
         root='/OCTraN/dataset/semantic_kitti/data_odometry_voxels',
         preprocess_root='/OCTraN/dataset/semantic_kitti/preprocess',
@@ -156,7 +153,7 @@ def main():
         max_epochs=10,
         logger=logger,
         check_val_every_n_epoch=1,
-        log_every_n_steps=10,
+        log_every_n_steps=1,
         accelerator="cuda",
     )
 

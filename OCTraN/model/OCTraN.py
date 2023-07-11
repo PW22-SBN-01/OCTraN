@@ -5,23 +5,25 @@ This python script contains the modules which comprises the contrastive occupanc
 '''
 
 # IMPORTS
-from PIL import Image
-import numpy as np
+import torch
+from torch import nn
+import torch.nn.functional as F
 import pytorch_lightning as pl
 from torch.optim.lr_scheduler import MultiStepLR
 
-from transformers import AutoImageProcessor, DPTFeatureExtractor
-
-from positional_encodings.torch_encodings import PositionalEncoding1D, PositionalEncoding2D, PositionalEncoding3D, Summer
-import torch
-from torch import nn
+from PIL import Image
+import numpy as np
 import math
+
+from transformers import AutoImageProcessor, DPTFeatureExtractor
+from positional_encodings.torch_encodings import PositionalEncoding1D, PositionalEncoding2D, PositionalEncoding3D, Summer
 
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
 
 from OCTraN.loss.ssc_loss import sem_scal_loss, CE_ssc_loss, KL_sep, geo_scal_loss
 from OCTraN.loss.sscMetrics import SSCMetrics
+from OCTraN.config.constants import learning_map
 
 # LOGGING
 from OCTraN.utils.colored_logging import log as logging
@@ -138,6 +140,14 @@ class OCTraN(pl.LightningModule):
         self.lr = lr
         self.weight_decay = weight_decay
         self.n_classes=n_classes
+        self.class_names=class_names
+        self.project_scale=project_scale
+        self.full_scene_size=full_scene_size
+        self.n_relations=n_relations
+        self.context_prior=context_prior
+        self.fp_loss=fp_loss
+        self.frustum_size=frustum_size
+        self.project_res=project_res
         self.train_metrics = SSCMetrics(self.n_classes)
         self.val_metrics = SSCMetrics(self.n_classes)
         self.test_metrics = SSCMetrics(self.n_classes)
@@ -182,9 +192,9 @@ class OCTraN(pl.LightningModule):
 
         # Initialize DeConv for Upsample
         self.upsample = nn.Sequential( # I have no fucking clue how I determined kernel size
-            nn.ConvTranspose3d(embeding_dim, embeding_dim, kernel_size=(21, 21, 4), stride=2),
-            nn.ConvTranspose3d(embeding_dim, embeding_dim, kernel_size=(20, 20, 4), stride=2),
-            nn.ConvTranspose3d(embeding_dim, embeding_dim, kernel_size=(18, 18, 6), stride=2)
+            nn.ConvTranspose3d(embeding_dim, embeding_dim, kernel_size=(2, 2, 2), stride=2),
+            nn.Upsample(scale_factor=4,mode='trilinear'),
+            nn.ConvTranspose3d(embeding_dim, embeding_dim, kernel_size=(2, 2, 2), stride=2),
         )
 
         # Segmentation head
@@ -216,20 +226,21 @@ class OCTraN(pl.LightningModule):
 
         # Obtain embedding + positional encoding
         logging.info(vox.shape) # Shape = (batch_size, 32, 32, 4)
-        logging.info(vox.dtype) # 
         vox_encoded = self.embed(vox)
-        # img_feat_encoded = self.encode(img_features)
+        out = rearrange(vox_encoded, 'b h w z c -> b (h w z) c')
 
         logging.info(f"Image Depth Features: {img_features.shape}")  # Size = (batch_size, 729, emb_dim)
         logging.info(f"Voxel Embedding: {vox_encoded.shape}")  # Size = (batch_size, 16, 16, 2, emb_dim)
 
         # Invoke Decoder
-        out = rearrange(vox_encoded, 'b h w z c -> b (h w z) c')
-        out = self.decoder1(out,img_features)
-        out = self.decoder2(out,img_features)
-        out = self.decoder3(out,img_features)
-        out = self.decoder4(out,img_features)
-        out = self.decoder5(out,img_features)
+        x = torch.bernoulli(torch.rand(8,512,512).uniform_(0,1))
+        mask = torch.where(x==1,x,float('-inf')).to(device)
+
+        out = self.decoder1(out,img_features,tgt_mask=mask)
+        out = self.decoder2(out,img_features,tgt_mask=mask)
+        out = self.decoder4(out,out)
+        out = self.decoder5(out,out)
+        
         out = rearrange(out, 'b (h w z) c -> b c h w z', h=16,w=16,z=2)
 
         logging.info(f"Decoder Output: {out.shape}")  # Size = (batch_size, emb_dim, 16, 16, 2)
@@ -256,16 +267,19 @@ class OCTraN(pl.LightningModule):
         logging.info(batch.keys())
         bs = len(batch["img"])
         loss = 0
+
         ssc_pred = self(batch['img'],torch.stack(batch["CP_mega_matrices"],dim=0).to(torch.float32))
         target = batch["target"]
-        
+
+        logging.info(f'Input Unique: {torch.stack(batch["CP_mega_matrices"],dim=0).to(torch.float32).unique()}')
         logging.info(f"Model Output: {ssc_pred}")
         logging.info(f"Ground Truth: {target.unique()}")
 
         # Define LOSS
-        # class_weight = self.class_weights.type_as(batch["img"])
+        logging.info(self.class_weights)
+        class_weight = self.class_weights.type_as(batch["img"])
         if self.CE_ssc_loss:
-            loss_ssc = CE_ssc_loss(ssc_pred, target, None)
+            loss_ssc = CE_ssc_loss(ssc_pred, target, class_weight)
             loss += loss_ssc
             self.log(
                 step_type + "/loss_ssc",
@@ -274,67 +288,68 @@ class OCTraN(pl.LightningModule):
                 sync_dist=True,
             )
 
-        # if self.sem_scal_loss:
-        #     loss_sem_scal = sem_scal_loss(ssc_pred, target)
-        #     loss += loss_sem_scal
-        #     self.log(
-        #         step_type + "/loss_sem_scal",
-        #         loss_sem_scal.detach(),
-        #         on_epoch=True,
-        #         sync_dist=True,
-        #     )
+        if self.sem_scal_loss:
+            loss_sem_scal = sem_scal_loss(ssc_pred, target)
+            loss += loss_sem_scal
+            self.log(
+                step_type + "/loss_sem_scal",
+                loss_sem_scal.detach(),
+                on_epoch=True,
+                sync_dist=True,
+            )
 
-        # if self.geo_scal_loss:
-        #     loss_geo_scal = geo_scal_loss(ssc_pred, target)
-        #     loss += loss_geo_scal
-        #     self.log(
-        #         step_type + "/loss_geo_scal",
-        #         loss_geo_scal.detach(),
-        #         on_epoch=True,
-        #         sync_dist=True,
-        #     )
+        if self.geo_scal_loss:
+            loss_geo_scal = geo_scal_loss(ssc_pred, target)
+            loss += loss_geo_scal
+            self.log(
+                step_type + "/loss_geo_scal",
+                loss_geo_scal.detach(),
+                on_epoch=True,
+                sync_dist=True,
+            )
 
-        # if self.fp_loss and step_type != "test":
-        #     frustums_masks = torch.stack(batch["frustums_masks"])
-        #     frustums_class_dists = torch.stack(
-        #         batch["frustums_class_dists"]
-        #     ).float()  # (bs, n_frustums, n_classes)
-        #     n_frustums = frustums_class_dists.shape[1]
+        if self.fp_loss and step_type != "test":
+            frustums_masks = torch.stack(batch["frustums_masks"])
+            frustums_class_dists = torch.stack(
+                batch["frustums_class_dists"]
+            ).float()  # (bs, n_frustums, n_classes)
+            n_frustums = frustums_class_dists.shape[1]
 
-        #     pred_prob = F.softmax(ssc_pred, dim=1)
-        #     batch_cnt = frustums_class_dists.sum(0)  # (n_frustums, n_classes)
+            pred_prob = F.softmax(ssc_pred, dim=1)
+            batch_cnt = frustums_class_dists.sum(0)  # (n_frustums, n_classes)
 
-        #     frustum_loss = 0
-        #     frustum_nonempty = 0
-        #     for frus in range(n_frustums):
-        #         frustum_mask = frustums_masks[:, frus, :, :, :].unsqueeze(1).float()
-        #         prob = frustum_mask * pred_prob  # bs, n_classes, H, W, D
-        #         prob = prob.reshape(bs, self.n_classes, -1).permute(1, 0, 2)
-        #         prob = prob.reshape(self.n_classes, -1)
-        #         cum_prob = prob.sum(dim=1)  # n_classes
+            frustum_loss = 0
+            frustum_nonempty = 0
+            for frus in range(n_frustums):
+                frustum_mask = frustums_masks[:, frus, :, :, :].unsqueeze(1).float()
+                prob = frustum_mask * pred_prob  # bs, n_classes, H, W, D
+                prob = prob.reshape(bs, self.n_classes, -1).permute(1, 0, 2)
+                prob = prob.reshape(self.n_classes, -1)
+                cum_prob = prob.sum(dim=1)  # n_classes
 
-        #         total_cnt = torch.sum(batch_cnt[frus])
-        #         total_prob = prob.sum()
-        #         if total_prob > 0 and total_cnt > 0:
-        #             frustum_target_proportion = batch_cnt[frus] / total_cnt
-        #             cum_prob = cum_prob / total_prob  # n_classes
-        #             frustum_loss_i = KL_sep(cum_prob, frustum_target_proportion)
-        #             frustum_loss += frustum_loss_i
-        #             frustum_nonempty += 1
-        #     frustum_loss = frustum_loss / frustum_nonempty
-        #     loss += frustum_loss
-        #     self.log(
-        #         step_type + "/loss_frustums",
-        #         frustum_loss.detach(),
-        #         on_epoch=True,
-        #         sync_dist=True,
-        #     )
+                total_cnt = torch.sum(batch_cnt[frus])
+                total_prob = prob.sum()
+                if total_prob > 0 and total_cnt > 0:
+                    frustum_target_proportion = batch_cnt[frus] / total_cnt
+                    cum_prob = cum_prob / total_prob  # n_classes
+                    frustum_loss_i = KL_sep(cum_prob, frustum_target_proportion)
+                    frustum_loss += frustum_loss_i
+                    frustum_nonempty += 1
+            frustum_loss = frustum_loss / frustum_nonempty
+            loss += frustum_loss
+            self.log(
+                step_type + "/loss_frustums",
+                frustum_loss.detach(),
+                on_epoch=True,
+                sync_dist=True,
+            )
 
         y_true = target.cpu().numpy()
         y_pred = ssc_pred.detach().cpu().numpy()
         y_pred = np.argmax(y_pred, axis=1)
         metric.add_batch(y_pred, y_true)
         logging.info(f"Loss: {loss}")
+        logging.info(f"Metrics: {metric.get_stats()}")
         self.log(step_type + "/loss", loss.detach(), on_epoch=True, sync_dist=True)
 
         return loss
