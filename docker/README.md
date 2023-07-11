@@ -17,3 +17,5 @@ Once the container is up and running use the following code to launch jupyter no
 ```bash
 jupyter notebook --ip 0.0.0.0 --no-browser --allow-root
 ```
+
+docker run --gpus all -it --rm -v $PWD:/OCTraN --mount type=bind,source=/media/harsh/Ubuntu_2/Datasets,target=/OCTraN/dataset

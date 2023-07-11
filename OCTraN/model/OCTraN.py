@@ -20,6 +20,9 @@ import math
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
 
+from OCTraN.loss.ssc_loss import sem_scal_loss, CE_ssc_loss, KL_sep, geo_scal_loss
+from OCTraN.loss.sscMetrics import SSCMetrics
+
 # LOGGING
 from OCTraN.utils.colored_logging import log as logging
 
@@ -50,17 +53,99 @@ class Encoder3D(nn.Module):
         patches_emb = self.pos_encoding(patches_emb)
         return patches_emb
 
+class SegmentationHead(nn.Module):
+    """
+    3D Segmentation heads to retrieve semantic segmentation at each scale.
+    Formed by Dim expansion, Conv3D, ASPP block, Conv3D.
+    Taken from https://github.com/cv-rits/LMSCNet/blob/main/LMSCNet/models/LMSCNet.py#L7
+    """
+
+    def __init__(self, inplanes, planes, nbr_classes, dilations_conv_list):
+        super().__init__()
+
+        # First convolution
+        self.conv0 = nn.Conv3d(inplanes, planes, kernel_size=3, padding=1, stride=1)
+
+        # ASPP Block
+        self.conv_list = dilations_conv_list
+        self.conv1 = nn.ModuleList(
+            [
+                nn.Conv3d(
+                    planes, planes, kernel_size=3, padding=dil, dilation=dil, bias=False
+                )
+                for dil in dilations_conv_list
+            ]
+        )
+        self.bn1 = nn.ModuleList(
+            [nn.BatchNorm3d(planes) for dil in dilations_conv_list]
+        )
+        self.conv2 = nn.ModuleList(
+            [
+                nn.Conv3d(
+                    planes, planes, kernel_size=3, padding=dil, dilation=dil, bias=False
+                )
+                for dil in dilations_conv_list
+            ]
+        )
+        self.bn2 = nn.ModuleList(
+            [nn.BatchNorm3d(planes) for dil in dilations_conv_list]
+        )
+        self.relu = nn.ReLU()
+
+        self.conv_classes = nn.Conv3d(
+            planes, nbr_classes, kernel_size=3, padding=1, stride=1
+        )
+
+    def forward(self, x_in):
+
+        # Convolution to go from inplanes to planes features...
+        x_in = self.relu(self.conv0(x_in))
+
+        y = self.bn2[0](self.conv2[0](self.relu(self.bn1[0](self.conv1[0](x_in)))))
+        for i in range(1, len(self.conv_list)):
+            y += self.bn2[i](self.conv2[i](self.relu(self.bn1[i](self.conv1[i](x_in)))))
+        x_in = self.relu(y + x_in)  # modified
+
+        x_in = self.conv_classes(x_in)
+
+        return x_in
+
 class OCTraN(pl.LightningModule):
     '''
     Contrastive Occupancy Transformer for 3D Semantic Scene Completition
     '''
-    def __init__(self,lr):
+    def __init__(
+            self,
+            n_classes,
+            class_names,
+            embeding_dim,
+            class_weights,
+            project_scale,
+            full_scene_size,
+            n_relations=4,
+            context_prior=True,
+            fp_loss=True,
+            project_res=[],
+            frustum_size=4,
+            relation_loss=False,
+            CE_ssc_loss=True,
+            geo_scal_loss=True,
+            sem_scal_loss=True,
+            lr=1e-4,
+            weight_decay=1e-4,
+        ):
         super().__init__()
         self.lr = lr
-        self.weight_decay = 0.1
-        self.train_metrics = nn.BCELoss()
-        self.val_metrics = nn.BCELoss()
-        self.test_metrics = nn.BCELoss()
+        self.weight_decay = weight_decay
+        self.n_classes=n_classes
+        self.train_metrics = SSCMetrics(self.n_classes)
+        self.val_metrics = SSCMetrics(self.n_classes)
+        self.test_metrics = SSCMetrics(self.n_classes)
+        self.CE_ssc_loss=CE_ssc_loss
+        self.sem_scal_loss=sem_scal_loss
+        self.geo_scal_loss=geo_scal_loss
+        self.relation_loss=relation_loss
+        self.class_weights=class_weights
 
         # log hyperparameters
         self.save_hyperparameters()
@@ -70,29 +155,49 @@ class OCTraN(pl.LightningModule):
         self.feature_extractor = DPTFeatureExtractor.from_pretrained("Intel/dpt-large")
         
         # Initialize embedding and encoder layer
-        self.encode = Encoder3D()
+        self.embed = Encoder3D(emb_dim=embeding_dim)
 
         # Trainable Downsizing Layer
         self.img_feat_out_channels = 3
         self.kernal_size = 25
         self.stride = 2
         self.downsize = nn.Sequential(
-            nn.Conv2d(3,4,self.kernal_size,stride=self.stride),
+            nn.Conv2d(3,8,self.kernal_size,stride=self.stride),
             nn.MaxPool2d(self.kernal_size, stride=self.stride),
-            nn.Conv2d(4,8,self.kernal_size,stride=self.stride),
+            nn.Conv2d(8,embeding_dim,self.kernal_size,stride=self.stride),
             Rearrange('b c h w -> b (h w) c')
         )
 
+        # Initalize Encoder
+        encoder_layer = nn.TransformerEncoderLayer(d_model=embeding_dim, nhead=8)
+        self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=6)
+
         # Initalize Decoder
-        decoder_layer = nn.TransformerDecoderLayer(d_model=8, nhead=8, batch_first=True)
-        self.decoder = nn.TransformerDecoder(decoder_layer, num_layers=6)
+        decoder_layer = nn.TransformerDecoderLayer(d_model=embeding_dim, nhead=8, batch_first=True)
+        self.decoder1 = nn.TransformerDecoder(decoder_layer, num_layers=6)
+        self.decoder2 = nn.TransformerDecoder(decoder_layer, num_layers=6)
+        self.decoder3 = nn.TransformerDecoder(decoder_layer, num_layers=6)
+        self.decoder4 = nn.TransformerDecoder(decoder_layer, num_layers=6)
+        self.decoder5 = nn.TransformerDecoder(decoder_layer, num_layers=6)
 
         # Initialize DeConv for Upsample
         self.upsample = nn.Sequential( # I have no fucking clue how I determined kernel size
-            nn.ConvTranspose3d(8, 4, kernel_size=(21, 21, 4), stride=2),
-            nn.ConvTranspose3d(4, 2, kernel_size=(20, 20, 4), stride=2),
-            nn.ConvTranspose3d(2, 1, kernel_size=(18, 18, 6), stride=2)
+            nn.ConvTranspose3d(embeding_dim, embeding_dim, kernel_size=(21, 21, 4), stride=2),
+            nn.ConvTranspose3d(embeding_dim, embeding_dim, kernel_size=(20, 20, 4), stride=2),
+            nn.ConvTranspose3d(embeding_dim, embeding_dim, kernel_size=(18, 18, 6), stride=2)
         )
+
+        # Segmentation head
+        layer_size = [math.prod((256,256,32)),embeding_dim]
+        self.seg_head = nn.Sequential(
+            nn.LayerNorm(layer_size),
+            nn.Linear(embeding_dim, 16),
+            nn.LayerNorm(16),
+            nn.Linear(16, 8),
+            nn.LayerNorm(8),
+            nn.Linear(8, 1),
+        )
+        self.seg_head = SegmentationHead(32, 1, self.n_classes, [1, 2, 3])
     
     def forward(self, img, vox):
         '''Compute forward pass'''
@@ -104,13 +209,15 @@ class OCTraN(pl.LightningModule):
             logging.info(img.shape)
             img_features = self.feature_extractor(images=img,return_tensors="pt")['pixel_values'].to(device)
         
+        logging.info(f"Image Features B4 Downsize: {img_features.shape}")  # Size = (batch_size, 729, emb_dim)
+
         # Downsize img_features
         img_features = self.downsize(img_features)
 
         # Obtain embedding + positional encoding
         logging.info(vox.shape) # Shape = (batch_size, 32, 32, 4)
         logging.info(vox.dtype) # 
-        vox_encoded = self.encode(vox)
+        vox_encoded = self.embed(vox)
         # img_feat_encoded = self.encode(img_features)
 
         logging.info(f"Image Depth Features: {img_features.shape}")  # Size = (batch_size, 729, emb_dim)
@@ -118,15 +225,30 @@ class OCTraN(pl.LightningModule):
 
         # Invoke Decoder
         out = rearrange(vox_encoded, 'b h w z c -> b (h w z) c')
-        out = self.decoder(out,img_features)
+        out = self.decoder1(out,img_features)
+        out = self.decoder2(out,img_features)
+        out = self.decoder3(out,img_features)
+        out = self.decoder4(out,img_features)
+        out = self.decoder5(out,img_features)
         out = rearrange(out, 'b (h w z) c -> b c h w z', h=16,w=16,z=2)
 
         logging.info(f"Decoder Output: {out.shape}")  # Size = (batch_size, emb_dim, 16, 16, 2)
 
         # Upsample
         out = self.upsample(out)
-
         logging.info(f"Upsample Output: {out.shape}")  # Size = (batch_size, 1, 256, 265, 32)
+
+        # Segmentation
+        out = self.seg_head(out)
+        logging.info(f"Segmented Output: {out.shape}")  # Size = 
+
+        # x3d_up_l1 = out.squeeze().permute(1,2,3,0).reshape(-1, 32)
+        # logging.info(f"Reshaped Output: {x3d_up_l1.shape}")  # Size = (batch_size, 1, 256, 265, 32)
+
+        # ssc_logit_full = self.seg_head(x3d_up_l1)
+
+        # out = ssc_logit_full.reshape(256, 256, 32, 1).permute(3,0,1,2).unsqueeze(0)
+        # logging.info(f"Output: {out.shape}")  # Size = (batch_size, 1, 256, 265, 32)
 
         return out
 
@@ -134,12 +256,86 @@ class OCTraN(pl.LightningModule):
         logging.info(batch.keys())
         bs = len(batch["img"])
         loss = 0
-        out_dict = self(batch['img'],torch.stack(batch["CP_mega_matrices"],dim=0).to(torch.float32))
+        ssc_pred = self(batch['img'],torch.stack(batch["CP_mega_matrices"],dim=0).to(torch.float32))
+        target = batch["target"]
         
-        logging.info(f"Output: {out_dict}")
+        logging.info(f"Model Output: {ssc_pred}")
+        logging.info(f"Ground Truth: {target.unique()}")
 
         # Define LOSS
+        # class_weight = self.class_weights.type_as(batch["img"])
+        if self.CE_ssc_loss:
+            loss_ssc = CE_ssc_loss(ssc_pred, target, None)
+            loss += loss_ssc
+            self.log(
+                step_type + "/loss_ssc",
+                loss_ssc.detach(),
+                on_epoch=True,
+                sync_dist=True,
+            )
 
+        # if self.sem_scal_loss:
+        #     loss_sem_scal = sem_scal_loss(ssc_pred, target)
+        #     loss += loss_sem_scal
+        #     self.log(
+        #         step_type + "/loss_sem_scal",
+        #         loss_sem_scal.detach(),
+        #         on_epoch=True,
+        #         sync_dist=True,
+        #     )
+
+        # if self.geo_scal_loss:
+        #     loss_geo_scal = geo_scal_loss(ssc_pred, target)
+        #     loss += loss_geo_scal
+        #     self.log(
+        #         step_type + "/loss_geo_scal",
+        #         loss_geo_scal.detach(),
+        #         on_epoch=True,
+        #         sync_dist=True,
+        #     )
+
+        # if self.fp_loss and step_type != "test":
+        #     frustums_masks = torch.stack(batch["frustums_masks"])
+        #     frustums_class_dists = torch.stack(
+        #         batch["frustums_class_dists"]
+        #     ).float()  # (bs, n_frustums, n_classes)
+        #     n_frustums = frustums_class_dists.shape[1]
+
+        #     pred_prob = F.softmax(ssc_pred, dim=1)
+        #     batch_cnt = frustums_class_dists.sum(0)  # (n_frustums, n_classes)
+
+        #     frustum_loss = 0
+        #     frustum_nonempty = 0
+        #     for frus in range(n_frustums):
+        #         frustum_mask = frustums_masks[:, frus, :, :, :].unsqueeze(1).float()
+        #         prob = frustum_mask * pred_prob  # bs, n_classes, H, W, D
+        #         prob = prob.reshape(bs, self.n_classes, -1).permute(1, 0, 2)
+        #         prob = prob.reshape(self.n_classes, -1)
+        #         cum_prob = prob.sum(dim=1)  # n_classes
+
+        #         total_cnt = torch.sum(batch_cnt[frus])
+        #         total_prob = prob.sum()
+        #         if total_prob > 0 and total_cnt > 0:
+        #             frustum_target_proportion = batch_cnt[frus] / total_cnt
+        #             cum_prob = cum_prob / total_prob  # n_classes
+        #             frustum_loss_i = KL_sep(cum_prob, frustum_target_proportion)
+        #             frustum_loss += frustum_loss_i
+        #             frustum_nonempty += 1
+        #     frustum_loss = frustum_loss / frustum_nonempty
+        #     loss += frustum_loss
+        #     self.log(
+        #         step_type + "/loss_frustums",
+        #         frustum_loss.detach(),
+        #         on_epoch=True,
+        #         sync_dist=True,
+        #     )
+
+        y_true = target.cpu().numpy()
+        y_pred = ssc_pred.detach().cpu().numpy()
+        y_pred = np.argmax(y_pred, axis=1)
+        metric.add_batch(y_pred, y_true)
+        logging.info(f"Loss: {loss}")
+        self.log(step_type + "/loss", loss.detach(), on_epoch=True, sync_dist=True)
 
         return loss
 

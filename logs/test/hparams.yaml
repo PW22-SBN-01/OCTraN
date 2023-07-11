@@ -1,1 +1,59 @@
-lr: 0.001
+CE_ssc_loss: true
+class_names:
+- empty
+- car
+- bicycle
+- motorcycle
+- truck
+- other-vehicle
+- person
+- bicyclist
+- motorcyclist
+- road
+- parking
+- sidewalk
+- other-ground
+- building
+- fence
+- vegetation
+- trunk
+- terrain
+- pole
+- traffic-sign
+class_weights: !!python/object/apply:torch._utils._rebuild_tensor_v2
+- !!python/object/apply:torch.storage._load_from_bytes
+  - !!binary |
+    gAKKCmz8nEb5IGqoUBkugAJN6QMugAJ9cQAoWBAAAABwcm90b2NvbF92ZXJzaW9ucQFN6QNYDQAA
+    AGxpdHRsZV9lbmRpYW5xAohYCgAAAHR5cGVfc2l6ZXNxA31xBChYBQAAAHNob3J0cQVLAlgDAAAA
+    aW50cQZLBFgEAAAAbG9uZ3EHSwR1dS6AAihYBwAAAHN0b3JhZ2VxAGN0b3JjaApEb3VibGVTdG9y
+    YWdlCnEBWAkAAAAxNDkwODc3OTJxAlgDAAAAY3B1cQNLFE50cQRRLoACXXEAWAkAAAAxNDkwODc3
+    OTJxAWEuFAAAAAAAAAC9XQmvDNimPyhU6dwP5K4/eIWMnaLPtT8btNxdbei1P5HxBCQiIrM/yFLr
+    WPLLsj+HZiP8WoO0Pwle5HujY7Q/8JSkYNPutD9b3469GousP7y71vi8tbA/6Y52vv4OrT/YzNsh
+    9H2xP7/NYEaarKw/Ia4kY//lrj+CgGNzCh6rP4bnnlaZm7E/UiWjHcthrT8fJQynkFeyP7FcGKh4
+    ILQ/
+- 0
+- !!python/tuple
+  - 20
+- !!python/tuple
+  - 1
+- false
+- !!python/object/apply:collections.OrderedDict
+  - []
+context_prior: true
+embeding_dim: 32
+fp_loss: true
+frustum_size: 8
+full_scene_size: !!python/tuple
+- 256
+- 256
+- 32
+geo_scal_loss: true
+lr: 0.0001
+n_classes: 20
+n_relations: 4
+project_res:
+- '1_8'
+project_scale: 2
+relation_loss: true
+sem_scal_loss: true
+weight_decay: 0.0001
