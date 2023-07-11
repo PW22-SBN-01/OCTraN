@@ -360,6 +360,46 @@ class OCTraN(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         self.step(batch, "val", self.val_metrics)
     
+    def validation_epoch_end(self, outputs):
+        metric_list = [("train", self.train_metrics), ("val", self.val_metrics)]
+
+        for prefix, metric in metric_list:
+            stats = metric.get_stats()
+            for i, class_name in enumerate(self.class_names):
+                self.log(
+                    "{}_SemIoU/{}".format(prefix, class_name),
+                    stats["iou_ssc"][i],
+                    sync_dist=True,
+                )
+            self.log("{}/mIoU".format(prefix), stats["iou_ssc_mean"], sync_dist=True)
+            self.log("{}/IoU".format(prefix), stats["iou"], sync_dist=True)
+            self.log("{}/Precision".format(prefix), stats["precision"], sync_dist=True)
+            self.log("{}/Recall".format(prefix), stats["recall"], sync_dist=True)
+            metric.reset()
+
+    def test_step(self, batch, batch_idx):
+        self.step(batch, "test", self.test_metrics)
+
+    def test_epoch_end(self, outputs):
+        classes = self.class_names
+        metric_list = [("test", self.test_metrics)]
+        for prefix, metric in metric_list:
+            print("{}======".format(prefix))
+            stats = metric.get_stats()
+            print(
+                "Precision={:.4f}, Recall={:.4f}, IoU={:.4f}".format(
+                    stats["precision"] * 100, stats["recall"] * 100, stats["iou"] * 100
+                )
+            )
+            print("class IoU: {}, ".format(classes))
+            print(
+                " ".join(["{:.4f}, "] * len(classes)).format(
+                    *(stats["iou_ssc"] * 100).tolist()
+                )
+            )
+            print("mIoU={:.4f}".format(stats["iou_ssc_mean"] * 100))
+            metric.reset()
+    
     def configure_optimizers(self):
 
         optimizer = torch.optim.AdamW(
