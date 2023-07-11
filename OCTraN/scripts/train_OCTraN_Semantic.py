@@ -159,10 +159,10 @@ def main():
 
     trainer.fit(model, data_module)
 
-    example_img = torch.rand(3,3,512,128,device=device)
-    example_vox = torch.randint(0,259,(3,32,32,4),dtype=torch.float32,device=device)
+    # example_img = torch.rand(3,3,512,128,device=device)
+    # example_vox = torch.randint(0,259,(3,32,32,4),dtype=torch.float32,device=device)
 
-    out = model(example_img,example_vox)
+    # out = model(example_img,example_vox)
     # logging.info(out.mean())
 
 if __name__ == "__main__":

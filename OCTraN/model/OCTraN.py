@@ -156,6 +156,7 @@ class OCTraN(pl.LightningModule):
         self.geo_scal_loss=geo_scal_loss
         self.relation_loss=relation_loss
         self.class_weights=class_weights
+        self.val_output=None
 
         # log hyperparameters
         self.save_hyperparameters()
@@ -358,9 +359,12 @@ class OCTraN(pl.LightningModule):
         return self.step(batch, "train", self.train_metrics)
 
     def validation_step(self, batch, batch_idx):
-        self.step(batch, "val", self.val_metrics)
-    
-    def validation_epoch_end(self, outputs):
+        self.val_output = self.step(batch, "val", self.val_metrics)
+
+    def on_validation_epoch_end(self,out, batch, batch_idx):
+        self.log("val/Output",out)
+
+    def on_validation_epoch_end(self):
         metric_list = [("train", self.train_metrics), ("val", self.val_metrics)]
 
         for prefix, metric in metric_list:
