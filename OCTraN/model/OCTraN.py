@@ -23,7 +23,7 @@ from einops.layers.torch import Rearrange
 
 from OCTraN.loss.ssc_loss import sem_scal_loss, CE_ssc_loss, KL_sep, geo_scal_loss
 from OCTraN.loss.sscMetrics import SSCMetrics
-from OCTraN.config.constants import learning_map
+# from OCTraN.config.constants import learning_map
 
 # LOGGING
 from OCTraN.utils.colored_logging import log as logging

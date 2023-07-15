@@ -17,8 +17,11 @@ from OCTraN.data.semantic_kitti.params import (
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
+from pytorch_lightning.loggers import WandbLogger
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+accelerator = 'cpu'
+# accelerator = 'cuda' # Disable cuda for testing
+device = torch.device(accelerator if torch.cuda.is_available() else 'cpu')
 
 logging.info(f'Using device {device}')
 logging.info(f'torch.__version__ {torch.__version__}') # 1.13.0
@@ -133,7 +136,16 @@ def main():
     logging.info(data_module)
 
     logger = TensorBoardLogger(save_dir='/OCTraN/logs', name='test', version="")
+    
+    wandb_logger = WandbLogger(
+        project='OCTraN_Semantic_TEST',
+        name=exp_name,
+        log_model=False, # Don't want to upload checkpoints to wandb
+    )
+    wandb_logger.watch(model)
+
     lr_monitor = LearningRateMonitor(logging_interval="step")
+    
     checkpoint_callbacks = [
         ModelCheckpoint(
             save_last=True,
@@ -151,10 +163,10 @@ def main():
         sync_batchnorm=True,
         deterministic=False,
         max_epochs=10,
-        logger=logger,
+        logger=[logger, wandb_logger],
         check_val_every_n_epoch=1,
         log_every_n_steps=1,
-        accelerator="cuda",
+        accelerator=accelerator,
     )
 
     trainer.fit(model, data_module)
