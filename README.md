@@ -65,3 +65,23 @@ Please cite our paper if you find this repo helpful:
 ```
 TODO
 ```
+
+# ICCV Documentation
+
+## Docker Environment
+
+To build, use:
+```bash
+docker compose build
+```
+
+To run the interactive shell, use:
+```bash
+docker compose run dev
+```
+
+## Train
+
+```bash
+python3 -m OCTraN.scripts.train_OCTraN_Semantic
+```
