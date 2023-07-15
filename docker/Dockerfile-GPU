@@ -1,4 +1,5 @@
 FROM nvidia/cuda:11.7.1-devel-ubuntu20.04
+# FROM nvidia/cuda:11.8.0-devel-ubuntu20.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -25,3 +26,8 @@ WORKDIR /OCTraN
 ADD ./requirements.txt .
 
 RUN pip3 install -r requirements.txt
+
+RUN git config --global --add safe.directory /OCTraN
+
+# OCTraN SHell Tag
+RUN echo 'PS1="(OCTraN) \[\]\[\e]0;\u@\h: \w\a\]${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ \[\]"' >> /root/.bashrc
