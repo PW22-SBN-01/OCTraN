@@ -74,9 +74,9 @@ class KittiDataset(Dataset):
         self.normalize_rgb = transforms.Compose(
             [
                 transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-                ),
+                # transforms.Normalize(
+                #     mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+                # ),
             ]
         )
 
@@ -129,7 +129,7 @@ class KittiDataset(Dataset):
         target_8_path = os.path.join(self.label_root, sequence, frame_id + "_1_8.npy")
         target_1_8 = np.load(target_8_path)
         CP_mega_matrix = compute_CP_mega_matrix(target_1_8)
-        data["CP_mega_matrix"] = CP_mega_matrix
+        data["CP_mega_matrix"] = target_1_8
 
         # Compute the masks, each indicate the voxels of a local frustum
         if self.split != "test":
