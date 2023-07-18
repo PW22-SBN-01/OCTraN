@@ -190,6 +190,9 @@ class OCTraN(pl.LightningModule):
         self.decoder3 = nn.TransformerDecoder(decoder_layer, num_layers=6)
         self.decoder4 = nn.TransformerDecoder(decoder_layer, num_layers=6)
         self.decoder5 = nn.TransformerDecoder(decoder_layer, num_layers=6)
+        self.decoder6 = nn.TransformerDecoder(decoder_layer, num_layers=6)
+        self.decoder7 = nn.TransformerDecoder(decoder_layer, num_layers=6)
+        self.decoder8 = nn.TransformerDecoder(decoder_layer, num_layers=6)
 
         # Initialize DeConv for Upsample
         self.upsample = nn.Sequential( # I have no fucking clue how I determined kernel size
@@ -241,6 +244,10 @@ class OCTraN(pl.LightningModule):
         out = self.decoder2(out,img_features,tgt_mask=mask)
         out = self.decoder4(out,out)
         out = self.decoder5(out,out)
+        out = self.decoder6(out,out)
+        out = self.decoder7(out,out)
+        out = self.decoder8(out,out)
+
         
         out = rearrange(out, 'b (h w z) c -> b c h w z', h=16,w=16,z=2)
 
@@ -279,25 +286,36 @@ class OCTraN(pl.LightningModule):
         # Define LOSS
         logging.info(self.class_weights)
         class_weight = self.class_weights.type_as(batch["img"])
-        if self.CE_ssc_loss:
-            loss_ssc = CE_ssc_loss(ssc_pred, target, class_weight)
-            loss += loss_ssc
-            self.log(
-                step_type + "/loss_ssc",
-                loss_ssc.detach(),
-                on_epoch=True,
-                sync_dist=True,
-            )
+        # if self.CE_ssc_loss:
+        #     loss_ssc = CE_ssc_loss(ssc_pred, target, class_weight)
+        #     loss += loss_ssc
+        #     self.log(
+        #         step_type + "/loss_ssc",
+        #         loss_ssc.detach(),
+        #         on_epoch=True,
+        #         sync_dist=True,
+        #     )
 
-        if self.sem_scal_loss:
-            loss_sem_scal = sem_scal_loss(ssc_pred, target)
-            loss += loss_sem_scal
-            self.log(
-                step_type + "/loss_sem_scal",
-                loss_sem_scal.detach(),
-                on_epoch=True,
-                sync_dist=True,
-            )
+        binary_pred = torch.logical_and((ssc_pred>=1), (ssc_pred<255)).float()
+        binary_target = torch.logical_and((target>=1),(target<255)).float()
+        binary_pred = torch.mean(binary_pred,1)
+        logging.info(f"Binary pred: {binary_pred.shape}")
+
+
+        criterion = nn.BCELoss(reduction="mean")
+        loss_binary = criterion(binary_pred, binary_target)
+
+        loss+=loss_binary 
+
+        # if self.sem_scal_loss:
+        #     loss_sem_scal = sem_scal_loss(ssc_pred, target)
+        #     loss += loss_sem_scal
+        #     self.log(
+        #         step_type + "/loss_sem_scal",
+        #         loss_sem_scal.detach(),
+        #         on_epoch=True,
+        #         sync_dist=True,
+        #     )
 
         if self.geo_scal_loss:
             loss_geo_scal = geo_scal_loss(ssc_pred, target)

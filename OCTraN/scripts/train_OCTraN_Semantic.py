@@ -19,7 +19,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.loggers import WandbLogger
 
-accelerator = 'cpu'
+accelerator = 'cuda'
 # accelerator = 'cuda' # Disable cuda for testing
 device = torch.device(accelerator if torch.cuda.is_available() else 'cpu')
 
@@ -46,7 +46,7 @@ n_gpus=1
 num_workers_per_gpu=0
 exp_prefix="exp"
 run=1
-lr=0.01
+lr=0.001
 weight_decay=0.001
 
 context_prior=True
