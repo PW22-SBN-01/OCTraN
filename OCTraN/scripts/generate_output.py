@@ -1,14 +1,12 @@
 from OCTraN.model.OCTraN import OCTraN
 from OCTraN.data.semantic_kitti.kitti_dm import KittiDataModule
 
-import hydra
-from omegaconf import DictConfig
 import torch
 import numpy as np
 import os
-from hydra.utils import get_original_cwd
 from tqdm import tqdm
 import pickle
+
 
 
 # @hydra.main(config_name="../config/monoscene.yaml")
@@ -29,13 +27,6 @@ def main(args):
         project_scale = 2
         full_scene_size = (256, 256, 32)
 
-        # data_module = KittiDataModule(
-        #     root=config.kitti_root,
-        #     preprocess_root=config.kitti_preprocess_root,
-        #     frustum_size=config.frustum_size,
-        #     batch_size=int(config.batch_size / config.n_gpus),
-        #     num_workers=int(config.num_workers_per_gpu * config.n_gpus),
-        # )
         data_module = KittiDataModule(
             root='/OCTraN/dataset/semantic_kitti/data_odometry_voxels',
             preprocess_root='/OCTraN/dataset/semantic_kitti/preprocess',
@@ -55,7 +46,6 @@ def main(args):
         model_path,
         feature=feature,
         project_scale=project_scale,
-        # fp_loss=config.fp_loss,
         full_scene_size=full_scene_size,
     )
     model.cuda()
@@ -66,11 +56,16 @@ def main(args):
     output_path = os.path.join(output_path, dataset)
     with torch.no_grad():
         for batch in tqdm(data_loader):
-            print(batch.keys())
-            exit()
             batch["img"] = batch["img"].cuda()
-            pred = model(batch)
-            y_pred = torch.softmax(pred["ssc_logit"], dim=1).detach().cpu().numpy()
+            batch["vox"] = torch.tensor(batch["CP_mega_matrices"][0]).to(dtype=torch.float32).cuda()
+            if len(batch["vox"].shape) == 3:
+                batch["vox"] = batch["vox"].unsqueeze(0)
+
+            img = batch["img"]
+            vox = batch["vox"]
+
+            pred = model(img, vox)
+            y_pred = torch.softmax(pred, dim=1).detach().cpu().numpy()
             y_pred = np.argmax(y_pred, axis=1)
             for i in range(batch_size):
                 out_dict = {"y_pred": y_pred[i].astype(np.uint16)}

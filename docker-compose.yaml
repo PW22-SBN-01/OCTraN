@@ -14,7 +14,7 @@ services:
       - ~/.bash_history:/root/.bash_history
       - ~/.netrc:/root/.netrc
       - ~/Datasets/SemanticKITTI/dataset/:/OCTraN/dataset/semantic_kitti/data_odometry_voxels/dataset
-      - ~/Datasets/SemanticKITTI/dataset_preprocess/:/OCTraN/dataset/semantic_kitti/preprocess_new
+      - ~/Datasets/SemanticKITTI/dataset_preprocess/:/OCTraN/dataset/semantic_kitti/preprocess
       
     deploy:
       resources:
