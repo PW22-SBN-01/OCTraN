@@ -46,7 +46,7 @@ n_gpus=1
 num_workers_per_gpu=0
 exp_prefix="exp"
 run=1
-lr=0.001
+lr=0.005
 weight_decay=0.001
 
 context_prior=True
@@ -148,11 +148,12 @@ def main():
     
     checkpoint_callbacks = [
         ModelCheckpoint(
+            dirpath='/OCTraN/logs',
             save_last=True,
-            monitor="val/mIoU",
+            monitor="val/IoU",
             save_top_k=1,
             mode="max",
-            filename="{epoch:03d}-{val/mIoU:.5f}",
+            filename="{epoch:03d}-{val/IoU:.5f}",
         ),
         lr_monitor,
     ]
