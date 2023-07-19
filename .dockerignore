@@ -175,7 +175,4 @@ INTERRUPTED.pth
 weights/
 nohup.out
 
-dataset/
-trained_models/
-
 core
