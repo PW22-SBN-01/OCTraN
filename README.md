@@ -33,8 +33,8 @@ pip install requirements.txt
 
 # Bengaluru Depth Dataset Dataset
 
- - Raw dataset link - (Removed for double blind review)
- - Depth Dataset link - (Removed for double blind review)
+ - Raw dataset link - https://drive.google.com/drive/folders/1ouZk8stDobJtpDvYKBPKg0bWNR6bIX-U
+ - Depth Dataset link - https://drive.google.com/drive/folders/1pzDVOu_Kpo_1sSdOQvF3n7zZ44NBLdzN
  - Mini Depth Dataset link - https://bit.ly/OCTraN-Dataset
 
 Download the Mini Depth Dataset and place it at `~/Datasets/Depth_Dataset_Bengaluru/1658384924059`
