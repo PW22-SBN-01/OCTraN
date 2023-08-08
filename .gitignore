@@ -170,3 +170,7 @@ INTERRUPTED.pth
 
 weights/
 nohup.out
+
+core
+outputs/
+trained_models/
