@@ -85,3 +85,14 @@ docker compose run dev
 ```bash
 python3 -m OCTraN.scripts.train_OCTraN_Semantic
 ```
+
+# Generate visuals
+
+```bash
+python3 -m OCTraN.scripts.generate_output --model_path trained_models/IoU\=0.21153.ckpt
+```
+
+Visualize
+```bash
+python3 -m OCTraN.scripts.visualization.kitti_vis_pred --file outputs/OCTraN_Semantic/kitti/08/000021.pkl
+```

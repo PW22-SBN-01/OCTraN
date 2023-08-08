@@ -1,8 +1,8 @@
 # from operator import gt
 import pickle
 import numpy as np
-from omegaconf import DictConfig
-import hydra
+# from omegaconf import DictConfig
+# import hydra
 from mayavi import mlab
 
 
@@ -159,9 +159,11 @@ def draw(
     mlab.show()
 
 
-@hydra.main(config_path=None)
-def main(config: DictConfig):
-    scan = config.file
+# @hydra.main(config_path=None)
+# def main(config: DictConfig):
+def main(args):
+    dataset = 'kitti'
+    scan = args.file
     with open(scan, "rb") as handle:
         b = pickle.load(handle)
 
@@ -169,21 +171,10 @@ def main(config: DictConfig):
     T_velo_2_cam = b["T_velo_2_cam"]
     vox_origin = np.array([0, -25.6, -2])
 
-    y_pred = b["y_pred"]
+    # y_pred = b["y_pred"]
+    y_pred = b["target"]
 
-    if config.dataset == "kitti_360":
-        # Visualize KITTI-360
-        draw(
-            y_pred,
-            T_velo_2_cam,
-            vox_origin,
-            fov_mask_1,
-            voxel_size=0.2,
-            f=552.55426,
-            img_size=(1408, 376),
-            d=7,
-        )
-    else:
+    if dataset == "kitti":
         # Visualize Semantic KITTI
         draw(
             y_pred,
@@ -195,7 +186,24 @@ def main(config: DictConfig):
             voxel_size=0.2,
             d=7,
         )
+    else:
+        # Not supported
+        raise NotImplementedError
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser()
+
+    # model_path
+    parser.add_argument(
+        "--file",
+        type=str,
+        required=True,
+        help="path to the output pkl file",
+    )
+
+    args = parser.parse_args()
+
+    main(args)

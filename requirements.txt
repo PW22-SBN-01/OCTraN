@@ -210,3 +210,4 @@ widgetsnbextension==4.0.7
 yacs==0.1.8
 yarl==1.9.2
 zipp==3.10.0
+mayavi==4.8.1
