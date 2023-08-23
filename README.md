@@ -36,7 +36,7 @@ pip install requirements.txt
 ```
 
 
-# Bengaluru Depth Dataset Dataset
+# Bengaluru Driving Dataset
 
  - Raw dataset link - https://drive.google.com/drive/folders/1ouZk8stDobJtpDvYKBPKg0bWNR6bIX-U
  - Depth Dataset link - https://drive.google.com/drive/folders/1pzDVOu_Kpo_1sSdOQvF3n7zZ44NBLdzN
